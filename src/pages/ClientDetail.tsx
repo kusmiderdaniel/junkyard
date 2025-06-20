@@ -148,6 +148,15 @@ const ClientDetail: React.FC = () => {
 
     setLoading(true);
     try {
+      // Debug logging for production issues
+      console.log(
+        '🔍 Fetching receipts for client:',
+        clientId,
+        'user:',
+        user.uid
+      );
+      console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
+
       const receiptsQuery = query(
         collection(db, 'receipts'),
         where('userID', '==', user.uid),
@@ -162,6 +171,7 @@ const ClientDetail: React.FC = () => {
         date: doc.data().date.toDate(),
       })) as Receipt[];
 
+      console.log('✅ Found receipts for this client:', receiptsData.length);
       setReceipts(receiptsData);
 
       // Calculate KPIs
