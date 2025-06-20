@@ -172,6 +172,7 @@ const ClientDetail: React.FC = () => {
       })) as Receipt[];
 
       console.log('✅ Found receipts for this client:', receiptsData.length);
+
       setReceipts(receiptsData);
 
       // Calculate KPIs
