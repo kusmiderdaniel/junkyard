@@ -154,6 +154,30 @@ const ClientDetail: React.FC = () => {
         'user:',
         user.uid
       );
+      console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
+      console.log(
+        '🏗️ Firebase Project:',
+        process.env.REACT_APP_FIREBASE_PROJECT_ID
+      );
+
+      // First, check all receipts to see what clientIds exist
+      const allReceiptsQuery = query(
+        collection(db, 'receipts'),
+        where('userID', '==', user.uid)
+      );
+
+      const allReceiptsSnapshot = await getDocs(allReceiptsQuery);
+      const allClientIds = allReceiptsSnapshot.docs.map(
+        doc => doc.data().clientId
+      );
+      const uniqueClientIds = Array.from(new Set(allClientIds));
+
+      console.log('📊 All clientIds in receipts:', uniqueClientIds);
+      console.log('🎯 Looking for clientId:', clientId);
+      console.log(
+        '📝 Total receipts for user:',
+        allReceiptsSnapshot.docs.length
+      );
 
       const receiptsQuery = query(
         collection(db, 'receipts'),
