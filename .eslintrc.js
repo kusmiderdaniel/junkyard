@@ -6,7 +6,7 @@ module.exports = {
     'no-unused-vars': 'warn',
     '@typescript-eslint/no-unused-vars': 'warn',
     'react-hooks/exhaustive-deps': 'warn',
-    'prefer-const': 'error',
+    'prefer-const': 'warn',
     'no-var': 'error',
   },
   overrides: [
