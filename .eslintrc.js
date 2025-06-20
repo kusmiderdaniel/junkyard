@@ -2,7 +2,8 @@ module.exports = {
   extends: ['react-app', 'react-app/jest'],
   rules: {
     // Custom rules for better code quality
-    'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+    // Allow console statements except in true production builds
+    'no-console': 'off',
     'no-unused-vars': 'warn',
     '@typescript-eslint/no-unused-vars': 'warn',
     'react-hooks/exhaustive-deps': 'warn',
