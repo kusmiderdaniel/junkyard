@@ -95,6 +95,8 @@ jobs:
 
       - name: Build for development
         run: npm run build:dev
+        env:
+          CI: false
 
       - name: Deploy to Firebase Development
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -102,6 +104,7 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}'
           projectId: '${{ secrets.DEV_FIREBASE_PROJECT_ID }}'
+          channelId: live
 
   deploy-staging:
     name: Deploy to Staging
@@ -135,6 +138,8 @@ jobs:
 
       - name: Build for staging
         run: npm run build:staging
+        env:
+          CI: false
 
       - name: Deploy to Firebase Staging
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -142,6 +147,7 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}'
           projectId: '${{ secrets.STAGING_FIREBASE_PROJECT_ID }}'
+          channelId: live
 
   deploy-production:
     name: Deploy to Production
@@ -175,10 +181,13 @@ jobs:
 
       - name: Build for production
         run: npm run build:prod
+        env:
+          CI: false
 
       - name: Deploy to Firebase Production
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}'
-          projectId: '${{ secrets.PROD_FIREBASE_PROJECT_ID }}' 
+          projectId: '${{ secrets.PROD_FIREBASE_PROJECT_ID }}'
+          channelId: live 

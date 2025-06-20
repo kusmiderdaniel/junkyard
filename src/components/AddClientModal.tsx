@@ -23,13 +23,20 @@ type AddClientModalProps = {
   initialData?: Client;
 };
 
-const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClientAdded, initialData }) => {
+const AddClientModal: React.FC<AddClientModalProps> = ({
+  isOpen,
+  onClose,
+  onClientAdded,
+  initialData,
+}) => {
   const { user } = useAuth();
   const { isOffline } = useOfflineStatus();
   const { addOfflineClient } = useOfflineSync();
   const [name, setName] = useState(initialData?.name || '');
   const [address, setAddress] = useState(initialData?.address || '');
-  const [documentNumber, setDocumentNumber] = useState(initialData?.documentNumber || '');
+  const [documentNumber, setDocumentNumber] = useState(
+    initialData?.documentNumber || ''
+  );
   const [postalCode, setPostalCode] = useState(initialData?.postalCode || '');
   const [city, setCity] = useState(initialData?.city || '');
   const [loading, setLoading] = useState(false);
@@ -71,7 +78,9 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
       const addressParts = [];
       if (address.trim()) addressParts.push(address.trim());
       if (postalCode.trim() || city.trim()) {
-        const locationPart = [postalCode.trim(), city.trim()].filter(Boolean).join(' ');
+        const locationPart = [postalCode.trim(), city.trim()]
+          .filter(Boolean)
+          .join(' ');
         if (locationPart) addressParts.push(locationPart);
       }
       const fullAddress = addressParts.join(', ');
@@ -101,22 +110,26 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
             name_lowercase: clientData.name.toLowerCase(),
             name_normalized: normalizePolishText(clientData.name),
             address_normalized: normalizePolishText(clientData.address),
-            documentNumber_normalized: normalizePolishText(clientData.documentNumber),
+            documentNumber_normalized: normalizePolishText(
+              clientData.documentNumber
+            ),
             postalCode_normalized: normalizePolishText(clientData.postalCode),
             city_normalized: normalizePolishText(clientData.city),
             fullAddress_normalized: normalizePolishText(fullAddress),
             searchableText: createSearchableText([
-              clientData.name, 
-              clientData.address, 
+              clientData.name,
+              clientData.address,
               clientData.documentNumber,
               clientData.postalCode,
               clientData.city,
-              fullAddress
-            ])
+              fullAddress,
+            ]),
           });
-          
+
           if (tempId) {
-            toast.success('Klient został dodany offline. Synchronizacja nastąpi po powrocie online.');
+            toast.success(
+              'Klient został dodany offline. Synchronizacja nastąpi po powrocie online.'
+            );
             onClientAdded();
           } else {
             setError('Nie udało się dodać klienta offline.');
@@ -129,24 +142,26 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
             name_lowercase: clientData.name.toLowerCase(),
             name_normalized: normalizePolishText(clientData.name),
             address_normalized: normalizePolishText(clientData.address),
-            documentNumber_normalized: normalizePolishText(clientData.documentNumber),
+            documentNumber_normalized: normalizePolishText(
+              clientData.documentNumber
+            ),
             postalCode_normalized: normalizePolishText(clientData.postalCode),
             city_normalized: normalizePolishText(clientData.city),
             fullAddress_normalized: normalizePolishText(fullAddress),
             searchableText: createSearchableText([
-              clientData.name, 
-              clientData.address, 
+              clientData.name,
+              clientData.address,
               clientData.documentNumber,
               clientData.postalCode,
               clientData.city,
-              fullAddress
+              fullAddress,
             ]),
-            userID: user.uid
+            userID: user.uid,
           });
           onClientAdded();
         }
       }
-      
+
       onClose();
       // Reset form
       setName('');
@@ -155,7 +170,9 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
       setPostalCode('');
       setCity('');
     } catch (err) {
-      setError(`Nie udało się ${initialData ? 'zaktualizować' : 'dodać'} klienta. Proszę spróbować ponownie.`);
+      setError(
+        `Nie udało się ${initialData ? 'zaktualizować' : 'dodać'} klienta. Proszę spróbować ponownie.`
+      );
       // Error already displayed to user via setError
     } finally {
       setLoading(false);
@@ -175,13 +192,14 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
     const initialDocumentNumber = initialData?.documentNumber || '';
     const initialPostalCode = initialData?.postalCode || '';
     const initialCity = initialData?.city || '';
-    
-    const hasChanges = name.trim() !== initialName.trim() || 
-                      address.trim() !== initialAddress.trim() || 
-                      documentNumber.trim() !== initialDocumentNumber.trim() ||
-                      postalCode.trim() !== initialPostalCode.trim() ||
-                      city.trim() !== initialCity.trim();
-    
+
+    const hasChanges =
+      name.trim() !== initialName.trim() ||
+      address.trim() !== initialAddress.trim() ||
+      documentNumber.trim() !== initialDocumentNumber.trim() ||
+      postalCode.trim() !== initialPostalCode.trim() ||
+      city.trim() !== initialCity.trim();
+
     if (hasChanges) {
       setShowConfirmDialog(true);
     } else {
@@ -203,7 +221,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
   }
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-200"
       onClick={handleBackdropClick}
     >
@@ -211,18 +229,18 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-          <svg
-            className="w-4 h-4 text-orange-700" 
-                fill="none" 
-                stroke="currentColor" 
+            <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+              <svg
+                className="w-4 h-4 text-orange-700"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                 />
               </svg>
             </div>
@@ -234,8 +252,18 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
             onClick={handleCloseAttempt}
             className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1 rounded-full hover:bg-gray-100"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -253,35 +281,23 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
                   type="text"
                   placeholder="Wprowadź nazwisko i imię klienta"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={e => setName(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                   required
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Address Field */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Adres
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Wprowadź adres klienta"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -297,12 +313,59 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
                   type="text"
                   placeholder="Wprowadź numer dokumentu"
                   value={documentNumber}
-                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  onChange={e => setDocumentNumber(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Address Field */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Adres
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Wprowadź adres klienta"
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -318,13 +381,28 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
                   type="text"
                   placeholder="Wprowadź kod pocztowy"
                   value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  onChange={e => setPostalCode(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -340,13 +418,28 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
                   type="text"
                   placeholder="Wprowadź miasto"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={e => setCity(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -355,8 +448,18 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
             {/* Error Message */}
             {error && (
               <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-5 h-5 text-red-500 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <p className="text-sm text-red-700">{error}</p>
               </div>
@@ -366,14 +469,14 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
 
         {/* Footer */}
         <div className="flex justify-between space-x-3 p-6 bg-gray-50 rounded-b-xl">
-                     <button
-             type="button"
-             onClick={handleCloseAttempt}
-             className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
-             disabled={loading}
-           >
-             Anuluj
-           </button>
+          <button
+            type="button"
+            onClick={handleCloseAttempt}
+            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
+            disabled={loading}
+          >
+            Anuluj
+          </button>
           <button
             type="submit"
             onClick={handleSubmit}
@@ -382,18 +485,47 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
-                <span>{initialData ? 'Aktualizowanie...' : 'Dodawanie...'}</span>
+                <span>
+                  {initialData ? 'Aktualizowanie...' : 'Dodawanie...'}
+                </span>
               </>
             ) : (
               <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
-                <span>{initialData ? 'Aktualizuj Klienta' : 'Dodaj Klienta'}</span>
+                <span>
+                  {initialData ? 'Aktualizuj Klienta' : 'Dodaj Klienta'}
+                </span>
               </>
             )}
           </button>
@@ -407,17 +539,17 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
             {/* Confirmation Header */}
             <div className="flex items-center space-x-3 p-6 border-b border-gray-200">
               <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg 
-                  className="w-5 h-5 text-amber-600" 
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  className="w-5 h-5 text-amber-600"
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
               </div>
@@ -429,7 +561,8 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
             {/* Confirmation Body */}
             <div className="p-6">
               <p className="text-gray-600 text-sm leading-relaxed">
-                Masz niezapisane zmiany które zostaną utracone. Czy na pewno chcesz zamknąć bez zapisywania informacji o kliencie?
+                Masz niezapisane zmiany które zostaną utracone. Czy na pewno
+                chcesz zamknąć bez zapisywania informacji o kliencie?
               </p>
             </div>
 
@@ -447,8 +580,18 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
                 onClick={handleConfirmClose}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 <span>Odrzuć Zmiany</span>
               </button>
@@ -460,4 +603,4 @@ const AddClientModal: React.FC<AddClientModalProps> = ({ isOpen, onClose, onClie
   );
 };
 
-export default AddClientModal; 
+export default AddClientModal;
