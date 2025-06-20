@@ -291,6 +291,54 @@ const ClientDetail: React.FC = () => {
     }
   }, [user, clientId]);
 
+  // Temporary diagnostic function to check receipt data structure - remove after debugging
+  const diagnosticDataCheck = useCallback(() => {
+    if (receipts.length === 0) {
+      console.log('🔍 No receipts to diagnose');
+      return;
+    }
+
+    console.log('🔧 DIAGNOSTIC: Checking receipt data structure...');
+
+    receipts.slice(0, 3).forEach((receipt, index) => {
+      console.log(`📄 Receipt ${index + 1} (${receipt.number}):`);
+      console.log('- Receipt object:', {
+        id: receipt.id,
+        number: receipt.number,
+        totalAmount: receipt.totalAmount,
+        itemsCount: receipt.items.length,
+      });
+
+      if (receipt.items && receipt.items.length > 0) {
+        console.log('- Items analysis:');
+        receipt.items.forEach((item, itemIndex) => {
+          console.log(`  Item ${itemIndex + 1}:`, {
+            itemName: item.itemName,
+            quantity: item.quantity,
+            buy_price: item.buy_price,
+            sell_price: item.sell_price,
+            total_price: item.total_price,
+            buy_price_type: typeof item.buy_price,
+            sell_price_type: typeof item.sell_price,
+            has_buy_price:
+              item.buy_price !== undefined && item.buy_price !== null,
+            has_sell_price:
+              item.sell_price !== undefined && item.sell_price !== null,
+            buy_price_is_zero: item.buy_price === 0,
+            sell_price_is_zero: item.sell_price === 0,
+          });
+        });
+      } else {
+        console.log('- No items found');
+      }
+      console.log('---');
+    });
+
+    console.log(
+      '🏁 Diagnostic complete. Check console above for data structure.'
+    );
+  }, [receipts]);
+
   useEffect(() => {
     fetchClient();
     fetchCompanyDetails();
@@ -699,28 +747,55 @@ const ClientDetail: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-800">Kwity Klienta</h2>
-          <button
-            onClick={handleExportToExcel}
-            disabled={loading || filteredReceipts.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <div className="flex gap-2">
+            <button
+              onClick={handleExportToExcel}
+              disabled={loading || filteredReceipts.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14,2 14,8 20,8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="21"></line>
-              <line x1="8" y1="13" x2="16" y2="21"></line>
-            </svg>
-            Eksportuj do Excela
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="21"></line>
+                <line x1="8" y1="13" x2="16" y2="21"></line>
+              </svg>
+              Eksportuj do Excela
+            </button>
+            {process.env.NODE_ENV === 'development' && (
+              <button
+                onClick={diagnosticDataCheck}
+                disabled={loading || receipts.length === 0}
+                className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 12l2 2 4-4"></path>
+                  <path d="M21 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"></path>
+                  <path d="M3 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"></path>
+                  <path d="M12 21c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"></path>
+                  <path d="M12 3c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"></path>
+                </svg>
+                Debug Data
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search Box */}
