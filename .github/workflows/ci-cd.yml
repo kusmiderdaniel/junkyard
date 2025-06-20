@@ -95,6 +95,8 @@ jobs:
 
       - name: Build for development
         run: npm run build:dev
+        env:
+          CI: false
 
       - name: Deploy to Firebase Development
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -135,6 +137,8 @@ jobs:
 
       - name: Build for staging
         run: npm run build:staging
+        env:
+          CI: false
 
       - name: Deploy to Firebase Staging
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -175,6 +179,8 @@ jobs:
 
       - name: Build for production
         run: npm run build:prod
+        env:
+          CI: false
 
       - name: Deploy to Firebase Production
         uses: FirebaseExtended/action-hosting-deploy@v0
