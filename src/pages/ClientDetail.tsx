@@ -148,13 +148,6 @@ const ClientDetail: React.FC = () => {
 
     setLoading(true);
     try {
-      console.log(
-        '🔍 Fetching receipts for client:',
-        clientId,
-        'user:',
-        user.uid
-      );
-
       const receiptsQuery = query(
         collection(db, 'receipts'),
         where('userID', '==', user.uid),
@@ -168,9 +161,6 @@ const ClientDetail: React.FC = () => {
         ...doc.data(),
         date: doc.data().date.toDate(),
       })) as Receipt[];
-
-      console.log('✅ Found receipts for this client:', receiptsData.length);
-      console.log('📋 Receipt data:', receiptsData);
 
       setReceipts(receiptsData);
 
