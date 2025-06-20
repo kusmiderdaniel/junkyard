@@ -1,46 +1,82 @@
-# Getting Started with Create React App
+# Junkyard PWA - Receipt Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A Progressive Web Application for managing receipts, clients, products, and business data with Firebase backend.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- 📱 **Progressive Web App** - Works offline, installable
+- 🔐 **Firebase Authentication** - Secure user management
+- 💾 **Firestore Database** - Real-time data synchronization
+- 📊 **Statistics & Reports** - Business insights with charts
+- 📄 **PDF Generation** - Receipt and summary documents
+- 📊 **Excel Export/Import** - Data import/export functionality
+- 🎨 **Modern UI** - Built with Tailwind CSS
 
-### `npm start`
+## Quick Start
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Prerequisites
+- Node.js 16+ and npm
+- Firebase project setup
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Installation
 
-### `npm test`
+1. Clone and install dependencies:
+```bash
+npm install
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. Configure Firebase:
+```bash
+cp env.example .env
+# Edit .env with your Firebase configuration
+```
 
-### `npm run build`
+3. Start the development server:
+```bash
+npm start
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. Build for production:
+```bash
+npm run build
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Environment Variables
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Required environment variables (see `env.example`):
+- `REACT_APP_FIREBASE_API_KEY`
+- `REACT_APP_FIREBASE_AUTH_DOMAIN`
+- `REACT_APP_FIREBASE_PROJECT_ID`
+- `REACT_APP_FIREBASE_STORAGE_BUCKET`
+- `REACT_APP_FIREBASE_MESSAGING_SENDER_ID`
+- `REACT_APP_FIREBASE_APP_ID`
+- `REACT_APP_ENV` (development/production)
 
-### `npm run eject`
+## Deployment
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+This app is configured for Firebase Hosting:
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+firebase deploy
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## Architecture
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+- **React 18** with TypeScript
+- **Firebase v11** (Auth, Firestore, Storage)
+- **Tailwind CSS** for styling
+- **Recharts** for data visualization
+- **@react-pdf/renderer** for PDF generation
+- **ExcelJS** for spreadsheet handling
 
-## Learn More
+## Production Ready
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+✅ **Code Quality**: TypeScript, ESLint
+✅ **Performance**: Lazy loading, code splitting
+✅ **Security**: Firestore rules, environment variables
+✅ **PWA**: Service worker, offline capability
+✅ **Bundle Size**: Optimized (885kB main bundle)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## License
+
+Private project

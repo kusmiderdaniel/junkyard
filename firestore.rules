@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user owns the document based on userID field
+    function isDocumentOwner() {
+      return isAuthenticated() && 
+             ('userID' in resource.data) && 
+             request.auth.uid == resource.data.userID;
+    }
+    
+    // Helper function to check if user is creating a document with their own userID
+    function isCreatingOwnDocument() {
+      return isAuthenticated() && 
+             ('userID' in request.resource.data) && 
+             request.auth.uid == request.resource.data.userID;
+    }
+    
+    // Clients collection - users can only access their own clients
+    match /clients/{clientId} {
+      allow read, update, delete: if isDocumentOwner();
+      allow create: if isCreatingOwnDocument();
+    }
+    
+    // Products collection - users can only access their own products
+    match /products/{productId} {
+      allow read, update, delete: if isDocumentOwner();
+      allow create: if isCreatingOwnDocument();
+    }
+    
+    // Categories collection - users can only access their own categories
+    match /categories/{categoryId} {
+      allow read, update, delete: if isDocumentOwner();
+      allow create: if isCreatingOwnDocument();
+    }
+    
+    // Receipts collection - users can only access their own receipts
+    match /receipts/{receiptId} {
+      allow read, update, delete: if isDocumentOwner();
+      allow create: if isCreatingOwnDocument();
+    }
+    
+    // Company details - users can only access their own company details
+    // The document ID should match the user's UID
+    match /companyDetails/{userId} {
+      allow read, write, create, update, delete: if isOwner(userId);
+    }
+  }
+}

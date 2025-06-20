@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "junkyard-31ade",
+    "production": "junkyard-31ade",
+    "staging": "your-app-staging",
+    "development": "your-app-dev"
+  }
+}

@@ -3,25 +3,43 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@testing-library/dom": "^10.4.0",
+    "@react-pdf/renderer": "^4.3.0",
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.126",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-scripts": "5.0.1",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "@testing-library/user-event": "^14.5.2",
+    "exceljs": "^4.4.0",
+    "firebase": "^11.9.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-router-dom": "^7.6.2",
+    "react-scripts": "^5.0.1",
+    "recharts": "^2.15.3",
+    "web-vitals": "^3.5.2",
+    "workbox-core": "^7.0.0",
+    "workbox-precaching": "^7.0.0",
+    "workbox-routing": "^7.0.0",
+    "workbox-strategies": "^7.0.0"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "REACT_APP_ENV=development react-scripts start",
+    "start:dev": "REACT_APP_ENV=development react-scripts start",
+    "start:staging": "REACT_APP_ENV=staging react-scripts start",
+    "start:prod": "REACT_APP_ENV=production react-scripts start",
     "build": "react-scripts build",
+    "build:dev": "REACT_APP_ENV=development react-scripts build",
+    "build:staging": "REACT_APP_ENV=staging react-scripts build",
+    "build:prod": "REACT_APP_ENV=production react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test:ci": "react-scripts test --coverage --ci --silent --maxWorkers=2",
+    "eject": "react-scripts eject",
+    "dev": "npm run start:dev",
+    "deploy:dev": "npm run build:dev && firebase use development && firebase deploy",
+    "deploy:staging": "npm run build:staging && firebase use staging && firebase deploy",
+    "deploy:prod": "npm run build:prod && firebase use production && firebase deploy",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit"
   },
   "eslintConfig": {
     "extends": [
@@ -40,5 +58,32 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "overrides": {
+    "nth-check": "^2.1.1",
+    "webpack-dev-server": "^4.15.1",
+    "resolve-url-loader": "^5.0.0",
+    "react-scripts": {
+      "postcss": "^8.4.31",
+      "webpack-dev-server": "^4.15.1"
+    },
+    "@pmmmwh/react-refresh-webpack-plugin": {
+      "webpack-dev-server": "^4.15.1"
+    }
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^9.3.4",
+    "@testing-library/react": "^14.3.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.0.3",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/react-router-dom": "^5.3.3",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^4.9.5",
+    "webpack-bundle-analyzer": "^4.10.2",
+    "workbox-webpack-plugin": "^7.3.0"
   }
 }
