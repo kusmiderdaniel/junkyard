@@ -49,6 +49,11 @@ const Products: React.FC = () => {
   });
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -212,17 +217,23 @@ const Products: React.FC = () => {
       return;
     }
 
-    if (
-      !window.confirm(`Czy na pewno chcesz usunąć kategorię "${categoryName}"?`)
-    ) {
-      return;
-    }
+    // Show confirmation modal
+    setCategoryToDelete({ id: categoryId, name: categoryName });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
 
     try {
-      await deleteDoc(doc(db, 'categories', categoryId));
+      await deleteDoc(doc(db, 'categories', categoryToDelete.id));
       await fetchData();
+      toast.success(`Kategoria "${categoryToDelete.name}" została usunięta.`);
     } catch (error) {
       toast.error('Błąd podczas usuwania kategorii. Spróbuj ponownie.');
+    } finally {
+      setShowDeleteModal(false);
+      setCategoryToDelete(null);
     }
   };
 
@@ -497,6 +508,67 @@ const Products: React.FC = () => {
           categories={categories}
           isEditing={!!editingProduct}
         />
+      )}
+
+      {/* Category Deletion Confirmation Modal */}
+      {showDeleteModal && categoryToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-red-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Potwierdź usunięcie kategorii
+                </h3>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                Czy na pewno chcesz usunąć kategorię{' '}
+                <span className="font-semibold text-gray-900">
+                  "{categoryToDelete.name}"
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-red-600 mt-2">
+                Ta akcja jest nieodwracalna.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setCategoryToDelete(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={confirmDeleteCategory}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                Usuń kategorię
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

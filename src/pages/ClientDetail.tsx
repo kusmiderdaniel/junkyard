@@ -292,6 +292,7 @@ const ClientDetail: React.FC = () => {
   }, [user, clientId]);
 
   // Temporary diagnostic function to check receipt data structure - remove after debugging
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const diagnosticDataCheck = useCallback(() => {
     if (receipts.length === 0) {
       console.log('🔍 No receipts to diagnose');
