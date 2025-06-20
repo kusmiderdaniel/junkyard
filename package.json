@@ -24,6 +24,7 @@
   "scripts": {
     "start": "REACT_APP_ENV=development react-scripts start",
     "start:dev": "REACT_APP_ENV=development react-scripts start",
+    "start:emulators": "firebase emulators:start --only firestore,auth,storage,database",
     "start:staging": "REACT_APP_ENV=staging react-scripts start",
     "start:prod": "REACT_APP_ENV=production react-scripts start",
     "build": "react-scripts build",

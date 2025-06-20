@@ -158,8 +158,6 @@ const Clients: React.FC = () => {
         const start = (currentPage - 1) * itemsPerPage;
         const paginated = allClients.slice(start, start + itemsPerPage);
         setClients(paginated);
-
-        console.log('📱 Loaded clients from cache (offline mode)');
         return;
       }
 

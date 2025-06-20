@@ -1,4 +1,10 @@
-import { Receipt, Client, CompanyDetails, Product, Category } from '../types/receipt';
+import {
+  Receipt,
+  Client,
+  CompanyDetails,
+  Product,
+  Category,
+} from '../types/receipt';
 
 // Types for offline operations queue
 export interface PendingOperation {
@@ -26,7 +32,7 @@ const STORAGE_KEYS = {
   PRODUCTS: 'offline_products',
   CATEGORIES: 'offline_categories',
   PENDING_OPERATIONS: 'offline_pending_operations',
-  LAST_SYNC: 'offline_last_sync'
+  LAST_SYNC: 'offline_last_sync',
 } as const;
 
 // Utility to safely parse JSON from localStorage
@@ -59,7 +65,7 @@ export const offlineStorage = {
     const recentReceipts = receipts
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 100); // Cache only the 100 most recent receipts
-    
+
     localStorage.setItem(STORAGE_KEYS.RECEIPTS, JSON.stringify(recentReceipts));
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, Date.now().toString());
   },
@@ -70,7 +76,7 @@ export const offlineStorage = {
     // Convert date strings back to Date objects
     return receipts.map(receipt => ({
       ...receipt,
-      date: new Date(receipt.date)
+      date: new Date(receipt.date),
     }));
   },
 
@@ -108,20 +114,24 @@ export const offlineStorage = {
   },
 
   // Pending Operations Queue
-  addPendingOperation: (operation: Omit<PendingOperation, 'id' | 'timestamp' | 'retryCount'>): string => {
+  addPendingOperation: (
+    operation: Omit<PendingOperation, 'id' | 'timestamp' | 'retryCount'>
+  ): string => {
     const operations = offlineStorage.getPendingOperations();
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     const newOperation: PendingOperation = {
       ...operation,
       id,
       timestamp: Date.now(),
-      retryCount: 0
+      retryCount: 0,
     };
-    
+
     operations.push(newOperation);
-    localStorage.setItem(STORAGE_KEYS.PENDING_OPERATIONS, JSON.stringify(operations));
-    
-    console.log('📝 Added pending operation:', operation.type, id);
+    localStorage.setItem(
+      STORAGE_KEYS.PENDING_OPERATIONS,
+      JSON.stringify(operations)
+    );
+
     return id;
   },
 
@@ -133,25 +143,36 @@ export const offlineStorage = {
   removePendingOperation: (operationId: string): void => {
     const operations = offlineStorage.getPendingOperations();
     const filtered = operations.filter(op => op.id !== operationId);
-    localStorage.setItem(STORAGE_KEYS.PENDING_OPERATIONS, JSON.stringify(filtered));
-    console.log('✅ Removed pending operation:', operationId);
+    localStorage.setItem(
+      STORAGE_KEYS.PENDING_OPERATIONS,
+      JSON.stringify(filtered)
+    );
   },
 
-  updatePendingOperation: (operationId: string, updates: Partial<PendingOperation>): void => {
+  updatePendingOperation: (
+    operationId: string,
+    updates: Partial<PendingOperation>
+  ): void => {
     const operations = offlineStorage.getPendingOperations();
     const index = operations.findIndex(op => op.id === operationId);
     if (index !== -1) {
       operations[index] = { ...operations[index], ...updates };
-      localStorage.setItem(STORAGE_KEYS.PENDING_OPERATIONS, JSON.stringify(operations));
+      localStorage.setItem(
+        STORAGE_KEYS.PENDING_OPERATIONS,
+        JSON.stringify(operations)
+      );
     }
   },
 
   // Offline Client Management
   addPendingClient: (clientData: Omit<PendingClient, 'tempId'>): string => {
-    const tempId = 'temp_client_' + Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const tempId =
+      'temp_client_' +
+      Date.now().toString() +
+      Math.random().toString(36).substr(2, 9);
     const pendingClient: PendingClient = {
       ...clientData,
-      tempId
+      tempId,
     };
 
     // Add to local cache immediately for UI responsiveness
@@ -163,7 +184,7 @@ export const offlineStorage = {
     // Add to pending operations queue
     offlineStorage.addPendingOperation({
       type: 'CREATE_CLIENT',
-      data: pendingClient
+      data: pendingClient,
     });
 
     return tempId;
@@ -171,10 +192,13 @@ export const offlineStorage = {
 
   // Offline Receipt Management
   addPendingReceipt: (receiptData: Omit<PendingReceipt, 'tempId'>): string => {
-    const tempId = 'temp_receipt_' + Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const tempId =
+      'temp_receipt_' +
+      Date.now().toString() +
+      Math.random().toString(36).substr(2, 9);
     const pendingReceipt: PendingReceipt = {
       ...receiptData,
-      tempId
+      tempId,
     };
 
     // Add to local cache immediately for UI responsiveness
@@ -186,7 +210,7 @@ export const offlineStorage = {
     // Add to pending operations queue
     offlineStorage.addPendingOperation({
       type: 'CREATE_RECEIPT',
-      data: pendingReceipt
+      data: pendingReceipt,
     });
 
     return tempId;
@@ -202,7 +226,7 @@ export const offlineStorage = {
   isCacheFresh: (): boolean => {
     const lastSync = offlineStorage.getLastSyncTime();
     if (!lastSync) return false;
-    
+
     const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     return Date.now() - lastSync < oneDay;
   },
@@ -223,7 +247,7 @@ export const offlineStorage = {
     const products = offlineStorage.getCachedProducts();
     const categories = offlineStorage.getCachedCategories();
     const pendingOperations = offlineStorage.getPendingOperations();
-    
+
     return {
       lastSync: lastSync ? new Date(lastSync).toLocaleString('pl-PL') : 'Never',
       isFresh: offlineStorage.isCacheFresh(),
@@ -239,8 +263,8 @@ export const offlineStorage = {
         localStorage.getItem(STORAGE_KEYS.COMPANY_DETAILS) || '',
         localStorage.getItem(STORAGE_KEYS.PRODUCTS) || '',
         localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '',
-        localStorage.getItem(STORAGE_KEYS.PENDING_OPERATIONS) || ''
-      ]).size
+        localStorage.getItem(STORAGE_KEYS.PENDING_OPERATIONS) || '',
+      ]).size,
     };
-  }
-}; 
+  },
+};
