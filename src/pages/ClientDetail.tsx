@@ -142,12 +142,92 @@ const ClientDetail: React.FC = () => {
     }
   }, [user]);
 
+  // Temporary diagnostic function - remove after debugging
+  const diagnosticReceiptCheck = useCallback(async () => {
+    if (!user || !clientId) return;
+
+    try {
+      console.log('🔧 DIAGNOSTIC: Running receipt check...');
+
+      // Query 1: Same as Clients.tsx (all receipts for user)
+      const allReceiptsQuery = query(
+        collection(db, 'receipts'),
+        where('userID', '==', user.uid)
+      );
+      const allReceiptsSnapshot = await getDocs(allReceiptsQuery);
+
+      console.log(
+        '📊 Total receipts for user:',
+        allReceiptsSnapshot.docs.length
+      );
+
+      // Check which clients have receipts
+      const clientReceiptMap: { [clientId: string]: number } = {};
+      allReceiptsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const cId = data.clientId;
+        if (cId) {
+          clientReceiptMap[cId] = (clientReceiptMap[cId] || 0) + 1;
+        }
+      });
+
+      console.log('📋 Receipt count by client:', clientReceiptMap);
+      console.log(
+        '🎯 Current client should have:',
+        clientReceiptMap[clientId] || 0,
+        'receipts'
+      );
+
+      // Query 2: Specific client receipts without orderBy (to test if index is the issue)
+      const clientReceiptsNoOrderQuery = query(
+        collection(db, 'receipts'),
+        where('userID', '==', user.uid),
+        where('clientId', '==', clientId)
+      );
+      const clientReceiptsNoOrderSnapshot = await getDocs(
+        clientReceiptsNoOrderQuery
+      );
+
+      console.log(
+        '📝 Client receipts found (no orderBy):',
+        clientReceiptsNoOrderSnapshot.docs.length
+      );
+
+      // Check first few receipt details
+      console.log('🔍 Sample receipts for this client:');
+      allReceiptsSnapshot.docs
+        .filter(doc => doc.data().clientId === clientId)
+        .slice(0, 3)
+        .forEach((doc, index) => {
+          const data = doc.data();
+          console.log(`Receipt ${index + 1}:`, {
+            id: doc.id,
+            number: data.number,
+            clientId: data.clientId,
+            userID: data.userID,
+            date: data.date,
+          });
+        });
+    } catch (error) {
+      console.error('🚨 Diagnostic error:', error);
+    }
+  }, [user, clientId]);
+
   // Fetch receipts for this client
   const fetchClientReceipts = useCallback(async () => {
     if (!user || !clientId) return;
 
     setLoading(true);
     try {
+      // Debug logging for production issues
+      console.log(
+        '🔍 Fetching receipts for client:',
+        clientId,
+        'user:',
+        user.uid
+      );
+      console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
+
       const receiptsQuery = query(
         collection(db, 'receipts'),
         where('userID', '==', user.uid),
@@ -161,6 +241,8 @@ const ClientDetail: React.FC = () => {
         ...doc.data(),
         date: doc.data().date.toDate(),
       })) as Receipt[];
+
+      console.log('✅ Found receipts for this client:', receiptsData.length);
 
       setReceipts(receiptsData);
 
@@ -209,11 +291,66 @@ const ClientDetail: React.FC = () => {
     }
   }, [user, clientId]);
 
+  // Temporary diagnostic function to check receipt data structure - remove after debugging
+  const diagnosticDataCheck = useCallback(() => {
+    if (receipts.length === 0) {
+      console.log('🔍 No receipts to diagnose');
+      return;
+    }
+
+    console.log('🔧 DIAGNOSTIC: Checking receipt data structure...');
+
+    receipts.slice(0, 3).forEach((receipt, index) => {
+      console.log(`📄 Receipt ${index + 1} (${receipt.number}):`);
+      console.log('- Receipt object:', {
+        id: receipt.id,
+        number: receipt.number,
+        totalAmount: receipt.totalAmount,
+        itemsCount: receipt.items.length,
+      });
+
+      if (receipt.items && receipt.items.length > 0) {
+        console.log('- Items analysis:');
+        receipt.items.forEach((item, itemIndex) => {
+          console.log(`  Item ${itemIndex + 1}:`, {
+            itemName: item.itemName,
+            quantity: item.quantity,
+            buy_price: item.buy_price,
+            sell_price: item.sell_price,
+            total_price: item.total_price,
+            buy_price_type: typeof item.buy_price,
+            sell_price_type: typeof item.sell_price,
+            has_buy_price:
+              item.buy_price !== undefined && item.buy_price !== null,
+            has_sell_price:
+              item.sell_price !== undefined && item.sell_price !== null,
+            buy_price_is_zero: item.buy_price === 0,
+            sell_price_is_zero: item.sell_price === 0,
+          });
+        });
+      } else {
+        console.log('- No items found');
+      }
+      console.log('---');
+    });
+
+    console.log(
+      '🏁 Diagnostic complete. Check console above for data structure.'
+    );
+  }, [receipts]);
+
   useEffect(() => {
     fetchClient();
     fetchCompanyDetails();
     fetchClientReceipts();
-  }, [fetchClient, fetchCompanyDetails, fetchClientReceipts]);
+    // Run diagnostic check for debugging
+    diagnosticReceiptCheck();
+  }, [
+    fetchClient,
+    fetchCompanyDetails,
+    fetchClientReceipts,
+    diagnosticReceiptCheck,
+  ]);
 
   // PDF Handlers
   const handleViewPDF = async (receipt: Receipt) => {
