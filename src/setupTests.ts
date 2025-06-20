@@ -31,3 +31,43 @@ jest.mock('./contexts/AuthContext', () => ({
     loading: false,
   }),
 }));
+
+// Mock IntersectionObserver
+(global as any).IntersectionObserver = class IntersectionObserver {
+  root = null;
+  rootMargin = '';
+  thresholds = [];
+
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+  takeRecords() {
+    return [];
+  }
+};
+
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(), // deprecated
+    removeListener: jest.fn(), // deprecated
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
+// Mock HTMLCanvasElement.getContext
+HTMLCanvasElement.prototype.getContext = jest.fn();
+
+// Mock console methods to reduce noise in tests
+global.console = {
+  ...console,
+  log: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
