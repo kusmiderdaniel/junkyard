@@ -142,6 +142,77 @@ const ClientDetail: React.FC = () => {
     }
   }, [user]);
 
+  // Temporary diagnostic function - remove after debugging
+  const diagnosticReceiptCheck = useCallback(async () => {
+    if (!user || !clientId) return;
+
+    try {
+      console.log('🔧 DIAGNOSTIC: Running receipt check...');
+
+      // Query 1: Same as Clients.tsx (all receipts for user)
+      const allReceiptsQuery = query(
+        collection(db, 'receipts'),
+        where('userID', '==', user.uid)
+      );
+      const allReceiptsSnapshot = await getDocs(allReceiptsQuery);
+
+      console.log(
+        '📊 Total receipts for user:',
+        allReceiptsSnapshot.docs.length
+      );
+
+      // Check which clients have receipts
+      const clientReceiptMap: { [clientId: string]: number } = {};
+      allReceiptsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const cId = data.clientId;
+        if (cId) {
+          clientReceiptMap[cId] = (clientReceiptMap[cId] || 0) + 1;
+        }
+      });
+
+      console.log('📋 Receipt count by client:', clientReceiptMap);
+      console.log(
+        '🎯 Current client should have:',
+        clientReceiptMap[clientId] || 0,
+        'receipts'
+      );
+
+      // Query 2: Specific client receipts without orderBy (to test if index is the issue)
+      const clientReceiptsNoOrderQuery = query(
+        collection(db, 'receipts'),
+        where('userID', '==', user.uid),
+        where('clientId', '==', clientId)
+      );
+      const clientReceiptsNoOrderSnapshot = await getDocs(
+        clientReceiptsNoOrderQuery
+      );
+
+      console.log(
+        '📝 Client receipts found (no orderBy):',
+        clientReceiptsNoOrderSnapshot.docs.length
+      );
+
+      // Check first few receipt details
+      console.log('🔍 Sample receipts for this client:');
+      allReceiptsSnapshot.docs
+        .filter(doc => doc.data().clientId === clientId)
+        .slice(0, 3)
+        .forEach((doc, index) => {
+          const data = doc.data();
+          console.log(`Receipt ${index + 1}:`, {
+            id: doc.id,
+            number: data.number,
+            clientId: data.clientId,
+            userID: data.userID,
+            date: data.date,
+          });
+        });
+    } catch (error) {
+      console.error('🚨 Diagnostic error:', error);
+    }
+  }, [user, clientId]);
+
   // Fetch receipts for this client
   const fetchClientReceipts = useCallback(async () => {
     if (!user || !clientId) return;
@@ -190,6 +261,29 @@ const ClientDetail: React.FC = () => {
 
       setKPIs({ totalQuantity, totalAmount, receiptCount });
     } catch (error) {
+      console.error('❌ Error fetching receipts for client:', error);
+      console.error('Error details:', {
+        clientId,
+        userID: user.uid,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorCode:
+          error && typeof error === 'object' && 'code' in error
+            ? (error as any).code
+            : 'no-code',
+      });
+
+      // Check if it's a missing index error
+      if (error instanceof Error && error.message.includes('index')) {
+        console.error(
+          '🚨 This looks like a missing Firestore index error. The index may still be building.'
+        );
+        toast.error(
+          'Indeks bazy danych jest w trakcie budowania. Spróbuj ponownie za kilka minut.'
+        );
+      } else {
+        console.error('💥 Unexpected error:', error);
+      }
+
       // Receipts list will remain empty if fetch fails
       setReceipts([]);
     } finally {
@@ -201,7 +295,14 @@ const ClientDetail: React.FC = () => {
     fetchClient();
     fetchCompanyDetails();
     fetchClientReceipts();
-  }, [fetchClient, fetchCompanyDetails, fetchClientReceipts]);
+    // Run diagnostic check for debugging
+    diagnosticReceiptCheck();
+  }, [
+    fetchClient,
+    fetchCompanyDetails,
+    fetchClientReceipts,
+    diagnosticReceiptCheck,
+  ]);
 
   // PDF Handlers
   const handleViewPDF = async (receipt: Receipt) => {
