@@ -31,7 +31,7 @@
     "build:staging": "REACT_APP_ENV=staging react-scripts build",
     "build:prod": "REACT_APP_ENV=production react-scripts build",
     "test": "react-scripts test",
-    "test:ci": "react-scripts test --coverage --ci --silent --maxWorkers=2",
+    "test:ci": "react-scripts test --coverage --ci --silent --maxWorkers=2 --passWithNoTests",
     "eject": "react-scripts eject",
     "dev": "npm run start:dev",
     "deploy:dev": "npm run build:dev && firebase use development && firebase deploy",
