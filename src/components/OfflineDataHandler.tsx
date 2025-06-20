@@ -1,17 +1,30 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { offlineStorage } from '../utils/offlineStorage';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from 'firebase/firestore';
 import { db } from '../firebase';
-import { Client, Receipt, CompanyDetails, Product, Category } from '../types/receipt';
+import {
+  Client,
+  Receipt,
+  CompanyDetails,
+  Product,
+  Category,
+} from '../types/receipt';
 
 const OfflineDataHandler: React.FC = () => {
   const { user } = useAuth();
   const { isOnline } = useOfflineStatus();
 
   // Function to cache all user data when online
-  const cacheUserData = async () => {
+  const cacheUserData = useCallback(async () => {
     if (!user || !isOnline) return;
 
     try {
@@ -23,7 +36,7 @@ const OfflineDataHandler: React.FC = () => {
       const clientsSnapshot = await getDocs(clientsQuery);
       const clients = clientsSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Client[];
       offlineStorage.cacheClients(clients);
 
@@ -36,7 +49,7 @@ const OfflineDataHandler: React.FC = () => {
       const receipts = receiptsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date.toDate()
+        date: doc.data().date.toDate(),
       })) as Receipt[];
       offlineStorage.cacheReceipts(receipts);
 
@@ -56,7 +69,7 @@ const OfflineDataHandler: React.FC = () => {
       const productsSnapshot = await getDocs(productsQuery);
       const products = productsSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Product[];
       offlineStorage.cacheProducts(products);
 
@@ -68,15 +81,21 @@ const OfflineDataHandler: React.FC = () => {
       const categoriesSnapshot = await getDocs(categoriesQuery);
       const categories = categoriesSnapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().name as string
+        name: doc.data().name as string,
       })) as Category[];
       offlineStorage.cacheCategories(categories);
 
-      console.log('✅ User data cached successfully for offline use (clients, receipts, company details, products, categories)');
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          '✅ User data cached successfully for offline use (clients, receipts, company details, products, categories)'
+        );
+      }
     } catch (error) {
-      console.warn('Failed to cache user data:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Failed to cache user data:', error);
+      }
     }
-  };
+  }, [user, isOnline]);
 
   // Cache data when user comes online
   useEffect(() => {
@@ -90,4 +109,4 @@ const OfflineDataHandler: React.FC = () => {
   return null; // This component doesn't render anything
 };
 
-export default OfflineDataHandler; 
+export default OfflineDataHandler;

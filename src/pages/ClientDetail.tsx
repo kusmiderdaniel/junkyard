@@ -148,37 +148,6 @@ const ClientDetail: React.FC = () => {
 
     setLoading(true);
     try {
-      console.log(
-        '🔍 Fetching receipts for client:',
-        clientId,
-        'user:',
-        user.uid
-      );
-      console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
-      console.log(
-        '🏗️ Firebase Project:',
-        process.env.REACT_APP_FIREBASE_PROJECT_ID
-      );
-
-      // First, check all receipts to see what clientIds exist
-      const allReceiptsQuery = query(
-        collection(db, 'receipts'),
-        where('userID', '==', user.uid)
-      );
-
-      const allReceiptsSnapshot = await getDocs(allReceiptsQuery);
-      const allClientIds = allReceiptsSnapshot.docs.map(
-        doc => doc.data().clientId
-      );
-      const uniqueClientIds = Array.from(new Set(allClientIds));
-
-      console.log('📊 All clientIds in receipts:', uniqueClientIds);
-      console.log('🎯 Looking for clientId:', clientId);
-      console.log(
-        '📝 Total receipts for user:',
-        allReceiptsSnapshot.docs.length
-      );
-
       const receiptsQuery = query(
         collection(db, 'receipts'),
         where('userID', '==', user.uid),
@@ -192,9 +161,6 @@ const ClientDetail: React.FC = () => {
         ...doc.data(),
         date: doc.data().date.toDate(),
       })) as Receipt[];
-
-      console.log('✅ Found receipts for this client:', receiptsData.length);
-      console.log('📋 Receipt data:', receiptsData);
 
       setReceipts(receiptsData);
 
