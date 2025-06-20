@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, getDocs, query, where, doc, getDoc, orderBy } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+  orderBy,
+} from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { usePDFReceipt } from '../components/PDFReceipt';
@@ -57,12 +65,12 @@ interface ClientKPIs {
 
 interface ExcelRowData {
   'Numer kwitu': string;
-  'Data': string;
-  'Klient': string;
+  Data: string;
+  Klient: string;
   'Nazwa towaru': string;
   'Kod towaru': string;
-  'Ilość': number;
-  'Jednostka': string;
+  Ilość: number;
+  Jednostka: string;
   'Cena zakupu': number;
   'Wartość pozycji': number;
 }
@@ -75,8 +83,14 @@ const ClientDetail: React.FC = () => {
 
   const [client, setClient] = useState<Client | null>(null);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(null);
-  const [kpis, setKPIs] = useState<ClientKPIs>({ totalQuantity: 0, totalAmount: 0, receiptCount: 0 });
+  const [companyDetails, setCompanyDetails] = useState<CompanyDetails | null>(
+    null
+  );
+  const [kpis, setKPIs] = useState<ClientKPIs>({
+    totalQuantity: 0,
+    totalAmount: 0,
+    receiptCount: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,7 +134,7 @@ const ClientDetail: React.FC = () => {
           postalCode: '',
           city: '',
           email: '',
-          phoneNumber: ''
+          phoneNumber: '',
         });
       }
     } catch (error) {
@@ -134,6 +148,13 @@ const ClientDetail: React.FC = () => {
 
     setLoading(true);
     try {
+      console.log(
+        '🔍 Fetching receipts for client:',
+        clientId,
+        'user:',
+        user.uid
+      );
+
       const receiptsQuery = query(
         collection(db, 'receipts'),
         where('userID', '==', user.uid),
@@ -145,16 +166,25 @@ const ClientDetail: React.FC = () => {
       const receiptsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date.toDate()
+        date: doc.data().date.toDate(),
       })) as Receipt[];
+
+      console.log('✅ Found receipts for this client:', receiptsData.length);
+      console.log('📋 Receipt data:', receiptsData);
 
       setReceipts(receiptsData);
 
       // Calculate KPIs
-      const totalQuantity = receiptsData.reduce((sum, receipt) => 
-        sum + receipt.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+      const totalQuantity = receiptsData.reduce(
+        (sum, receipt) =>
+          sum +
+          receipt.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+        0
       );
-      const totalAmount = receiptsData.reduce((sum, receipt) => sum + receipt.totalAmount, 0);
+      const totalAmount = receiptsData.reduce(
+        (sum, receipt) => sum + receipt.totalAmount,
+        0
+      );
       const receiptCount = receiptsData.length;
 
       setKPIs({ totalQuantity, totalAmount, receiptCount });
@@ -175,7 +205,9 @@ const ClientDetail: React.FC = () => {
   // PDF Handlers
   const handleViewPDF = async (receipt: Receipt) => {
     if (!companyDetails || !client) {
-      toast.error('Dane klienta lub firmy nie zostały załadowane. Spróbuj ponownie.');
+      toast.error(
+        'Dane klienta lub firmy nie zostały załadowane. Spróbuj ponownie.'
+      );
       return;
     }
 
@@ -188,7 +220,9 @@ const ClientDetail: React.FC = () => {
 
   const handleDownloadPDF = async (receipt: Receipt) => {
     if (!companyDetails || !client) {
-      toast.error('Dane klienta lub firmy nie zostały załadowane. Spróbuj ponownie.');
+      toast.error(
+        'Dane klienta lub firmy nie zostały załadowane. Spróbuj ponownie.'
+      );
       return;
     }
 
@@ -207,7 +241,7 @@ const ClientDetail: React.FC = () => {
     return date.toLocaleDateString('pl-PL', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -223,7 +257,7 @@ const ClientDetail: React.FC = () => {
 
     return new Intl.NumberFormat('pl-PL', {
       style: 'currency',
-      currency: 'PLN'
+      currency: 'PLN',
     }).format(amount);
   };
 
@@ -237,7 +271,10 @@ const ClientDetail: React.FC = () => {
       return `${thousands} ${hundreds},${decimalPart}`;
     }
 
-    return quantity.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return quantity.toLocaleString('pl-PL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   const toggleRowExpansion = (receiptId: string) => {
@@ -264,10 +301,13 @@ const ClientDetail: React.FC = () => {
     }
 
     // Search in product names within items
-    if (receipt.items.some(item =>
-      item.itemName.toLowerCase().includes(searchLower) ||
-      item.itemCode.toLowerCase().includes(searchLower)
-    )) {
+    if (
+      receipt.items.some(
+        item =>
+          item.itemName.toLowerCase().includes(searchLower) ||
+          item.itemCode.toLowerCase().includes(searchLower)
+      )
+    ) {
       return true;
     }
 
@@ -281,25 +321,25 @@ const ClientDetail: React.FC = () => {
     try {
       // Create detailed data with one row per item
       const excelData: ExcelRowData[] = [];
-      
+
       filteredReceipts.forEach(receipt => {
         const receiptDate = receipt.date.toLocaleDateString('pl-PL', {
           day: '2-digit',
           month: '2-digit',
-          year: 'numeric'
+          year: 'numeric',
         });
 
         receipt.items.forEach(item => {
           excelData.push({
             'Numer kwitu': receipt.number,
-            'Data': receiptDate,
-            'Klient': client.name,
+            Data: receiptDate,
+            Klient: client.name,
             'Nazwa towaru': item.itemName,
             'Kod towaru': item.itemCode,
-            'Ilość': item.quantity,
-            'Jednostka': item.unit,
+            Ilość: item.quantity,
+            Jednostka: item.unit,
             'Cena zakupu': item.buy_price,
-            'Wartość pozycji': item.total_price
+            'Wartość pozycji': item.total_price,
           });
         });
       });
@@ -312,21 +352,22 @@ const ClientDetail: React.FC = () => {
       // Create workbook and worksheet
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Kwity klienta');
-      
+
       // Add header information
       const currentDate = new Date().toLocaleDateString('pl-PL', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
       });
-      
+
       let currentRow = 1;
-      
+
       // Add report header
-      worksheet.getCell(`A${currentRow}`).value = `Raport klienta wygenerowany: ${currentDate}`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `Raport klienta wygenerowany: ${currentDate}`;
       worksheet.getCell(`A${currentRow}`).font = { bold: true };
       currentRow += 2;
-      
+
       // Add client information
       worksheet.getCell(`A${currentRow}`).value = 'Klient:';
       worksheet.getCell(`A${currentRow}`).font = { bold: true };
@@ -335,40 +376,56 @@ const ClientDetail: React.FC = () => {
       currentRow++;
       worksheet.getCell(`A${currentRow}`).value = `• Adres: ${client.address}`;
       currentRow++;
-      worksheet.getCell(`A${currentRow}`).value = `• Numer dokumentu: ${client.documentNumber}`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `• Numer dokumentu: ${client.documentNumber}`;
       currentRow += 2;
-      
+
       if (searchTerm) {
         worksheet.getCell(`A${currentRow}`).value = 'Zastosowane filtry:';
         worksheet.getCell(`A${currentRow}`).font = { bold: true };
         currentRow++;
-        worksheet.getCell(`A${currentRow}`).value = `• Wyszukiwanie: "${searchTerm}"`;
+        worksheet.getCell(`A${currentRow}`).value =
+          `• Wyszukiwanie: "${searchTerm}"`;
         currentRow += 2;
       }
-      
+
       // Add summary information
-      worksheet.getCell(`A${currentRow}`).value = `Łączna liczba pozycji: ${excelData.length}`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `Łączna liczba pozycji: ${excelData.length}`;
       currentRow++;
-      worksheet.getCell(`A${currentRow}`).value = `Łączna liczba kwitów: ${filteredReceipts.length}`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `Łączna liczba kwitów: ${filteredReceipts.length}`;
       currentRow++;
-      worksheet.getCell(`A${currentRow}`).value = `Łączna ilość: ${kpis.totalQuantity.toFixed(2)} kg`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `Łączna ilość: ${kpis.totalQuantity.toFixed(2)} kg`;
       currentRow++;
-      worksheet.getCell(`A${currentRow}`).value = `Łączna kwota: ${formatCurrency(kpis.totalAmount)}`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `Łączna kwota: ${formatCurrency(kpis.totalAmount)}`;
       currentRow += 3;
-      
+
       // Add table headers
-      const headers = ['Numer kwitu', 'Data', 'Klient', 'Nazwa towaru', 'Kod towaru', 'Ilość', 'Jednostka', 'Cena zakupu', 'Wartość pozycji'];
+      const headers = [
+        'Numer kwitu',
+        'Data',
+        'Klient',
+        'Nazwa towaru',
+        'Kod towaru',
+        'Ilość',
+        'Jednostka',
+        'Cena zakupu',
+        'Wartość pozycji',
+      ];
       const headerRow = worksheet.getRow(currentRow);
       headerRow.values = headers;
       headerRow.font = { bold: true };
       headerRow.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF366092' }
+        fgColor: { argb: 'FF366092' },
       };
       headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       currentRow++;
-      
+
       // Add data rows
       excelData.forEach(rowData => {
         const row = worksheet.getRow(currentRow);
@@ -381,11 +438,11 @@ const ClientDetail: React.FC = () => {
           rowData['Ilość'],
           rowData['Jednostka'],
           rowData['Cena zakupu'],
-          rowData['Wartość pozycji']
+          rowData['Wartość pozycji'],
         ];
         currentRow++;
       });
-      
+
       // Set column widths
       worksheet.columns = [
         { width: 15 }, // Numer kwitu
@@ -406,7 +463,9 @@ const ClientDetail: React.FC = () => {
 
       // Download the file
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -421,7 +480,9 @@ const ClientDetail: React.FC = () => {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Zaloguj się, aby wyświetlić szczegóły klienta.</p>
+        <p className="text-gray-500">
+          Zaloguj się, aby wyświetlić szczegóły klienta.
+        </p>
       </div>
     );
   }
@@ -472,19 +533,33 @@ const ClientDetail: React.FC = () => {
       <div className="flex gap-6 items-center">
         {/* Client Details - Compact Box */}
         <div className="bg-white p-6 rounded-lg shadow-md w-80">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Informacje o Kliencie</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            Informacje o Kliencie
+          </h2>
           <div className="space-y-3">
             <div className="flex">
-              <span className="text-sm font-medium text-gray-700 w-24">Nazwa:</span>
-              <span className="text-sm text-gray-900 flex-1">{client.name}</span>
+              <span className="text-sm font-medium text-gray-700 w-24">
+                Nazwa:
+              </span>
+              <span className="text-sm text-gray-900 flex-1">
+                {client.name}
+              </span>
             </div>
             <div className="flex">
-              <span className="text-sm font-medium text-gray-700 w-24">Dokument:</span>
-              <span className="text-sm text-gray-900 flex-1">{client.documentNumber}</span>
+              <span className="text-sm font-medium text-gray-700 w-24">
+                Dokument:
+              </span>
+              <span className="text-sm text-gray-900 flex-1">
+                {client.documentNumber}
+              </span>
             </div>
             <div className="flex">
-              <span className="text-sm font-medium text-gray-700 w-24">Adres:</span>
-              <span className="text-sm text-gray-900 flex-1">{client.fullAddress || client.address}</span>
+              <span className="text-sm font-medium text-gray-700 w-24">
+                Adres:
+              </span>
+              <span className="text-sm text-gray-900 flex-1">
+                {client.fullAddress || client.address}
+              </span>
             </div>
           </div>
         </div>
@@ -492,16 +567,28 @@ const ClientDetail: React.FC = () => {
         {/* KPIs Cards */}
         <div className="flex-1 flex gap-4">
           <div className="bg-white p-6 rounded-lg shadow-md flex-1 flex flex-col justify-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Łączna Ilość</h3>
-            <p className="text-3xl font-bold text-orange-700">{formatQuantity(kpis.totalQuantity)} kg</p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Łączna Ilość
+            </h3>
+            <p className="text-3xl font-bold text-orange-700">
+              {formatQuantity(kpis.totalQuantity)} kg
+            </p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md flex-1 flex flex-col justify-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Łączna Kwota</h3>
-            <p className="text-3xl font-bold text-green-600">{formatCurrency(kpis.totalAmount)}</p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Łączna Kwota
+            </h3>
+            <p className="text-3xl font-bold text-green-600">
+              {formatCurrency(kpis.totalAmount)}
+            </p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md flex-1 flex flex-col justify-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Liczba Kwitów</h3>
-            <p className="text-3xl font-bold text-purple-600">{kpis.receiptCount}</p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Liczba Kwitów
+            </h3>
+            <p className="text-3xl font-bold text-purple-600">
+              {kpis.receiptCount}
+            </p>
           </div>
         </div>
       </div>
@@ -515,14 +602,14 @@ const ClientDetail: React.FC = () => {
             disabled={loading || filteredReceipts.length === 0}
             className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -556,7 +643,7 @@ const ClientDetail: React.FC = () => {
               type="text"
               placeholder="Szukaj kwitów lub produktów..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
             {searchTerm && (
@@ -587,10 +674,18 @@ const ClientDetail: React.FC = () => {
           <table className="min-w-full bg-white">
             <thead className="bg-gray-800 text-white">
               <tr>
-                <th className="text-left py-3 px-4 uppercase font-semibold text-sm">Numer Kwitu</th>
-                <th className="text-left py-3 px-4 uppercase font-semibold text-sm">Data</th>
-                <th className="text-right py-3 px-4 uppercase font-semibold text-sm">Łączna Kwota</th>
-                <th className="text-center py-3 px-4 uppercase font-semibold text-sm">Akcje</th>
+                <th className="text-left py-3 px-4 uppercase font-semibold text-sm">
+                  Numer Kwitu
+                </th>
+                <th className="text-left py-3 px-4 uppercase font-semibold text-sm">
+                  Data
+                </th>
+                <th className="text-right py-3 px-4 uppercase font-semibold text-sm">
+                  Łączna Kwota
+                </th>
+                <th className="text-center py-3 px-4 uppercase font-semibold text-sm">
+                  Akcje
+                </th>
               </tr>
             </thead>
             <tbody className="text-gray-700">
@@ -604,7 +699,7 @@ const ClientDetail: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredReceipts.map((receipt) => (
+                filteredReceipts.map(receipt => (
                   <React.Fragment key={receipt.id}>
                     <tr
                       className="border-b hover:bg-gray-50 cursor-pointer"
@@ -614,11 +709,29 @@ const ClientDetail: React.FC = () => {
                         <div className="flex items-center">
                           <span className="mr-2">
                             {expandedRows.has(receipt.id) ? (
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
                                 <polyline points="6,9 12,15 18,9"></polyline>
                               </svg>
                             ) : (
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
                                 <polyline points="9,18 15,12 9,6"></polyline>
                               </svg>
                             )}
@@ -627,8 +740,13 @@ const ClientDetail: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4">{formatDate(receipt.date)}</td>
-                      <td className="py-3 px-4 text-right font-medium">{formatCurrency(receipt.totalAmount)}</td>
-                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-4 text-right font-medium">
+                        {formatCurrency(receipt.totalAmount)}
+                      </td>
+                      <td
+                        className="py-3 px-4 text-center"
+                        onClick={e => e.stopPropagation()}
+                      >
                         <div className="flex justify-center items-center gap-2">
                           <button
                             onClick={() => handleViewPDF(receipt)}
@@ -702,23 +820,45 @@ const ClientDetail: React.FC = () => {
                               <table className="min-w-full bg-white rounded-lg shadow-sm">
                                 <thead className="bg-gray-100">
                                   <tr>
-                                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Nazwa Towaru</th>
-                                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Kod</th>
-                                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Ilość</th>
-                                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Cena Skupu</th>
-                                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Razem</th>
+                                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Nazwa Towaru
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Kod
+                                    </th>
+                                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Ilość
+                                    </th>
+                                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Cena Skupu
+                                    </th>
+                                    <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Razem
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                   {receipt.items.map((item, index) => (
                                     <tr key={index}>
-                                      <td className="py-2 px-3 text-sm text-gray-900">{item.itemName}</td>
-                                      <td className="py-2 px-3 text-sm text-gray-500">{item.itemCode}</td>
-                                      <td className="py-2 px-3 text-sm text-gray-900 text-right">
-                                        {item.quantity.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {item.unit}
+                                      <td className="py-2 px-3 text-sm text-gray-900">
+                                        {item.itemName}
                                       </td>
-                                      <td className="py-2 px-3 text-sm text-gray-900 text-right">{formatCurrency(item.buy_price)}</td>
-                                      <td className="py-2 px-3 text-sm font-medium text-gray-900 text-right">{formatCurrency(item.total_price)}</td>
+                                      <td className="py-2 px-3 text-sm text-gray-500">
+                                        {item.itemCode}
+                                      </td>
+                                      <td className="py-2 px-3 text-sm text-gray-900 text-right">
+                                        {item.quantity.toLocaleString('pl-PL', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        })}{' '}
+                                        {item.unit}
+                                      </td>
+                                      <td className="py-2 px-3 text-sm text-gray-900 text-right">
+                                        {formatCurrency(item.buy_price)}
+                                      </td>
+                                      <td className="py-2 px-3 text-sm font-medium text-gray-900 text-right">
+                                        {formatCurrency(item.total_price)}
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -734,7 +874,9 @@ const ClientDetail: React.FC = () => {
               {filteredReceipts.length === 0 && !loading && (
                 <tr>
                   <td colSpan={4} className="text-center py-8 text-gray-500">
-                    {searchTerm ? `Nie znaleziono kwitów pasujących do "${searchTerm}".` : `Nie znaleziono kwitów dla ${client.name}.`}
+                    {searchTerm
+                      ? `Nie znaleziono kwitów pasujących do "${searchTerm}".`
+                      : `Nie znaleziono kwitów dla ${client.name}.`}
                   </td>
                 </tr>
               )}
@@ -746,4 +888,4 @@ const ClientDetail: React.FC = () => {
   );
 };
 
-export default ClientDetail; 
+export default ClientDetail;
