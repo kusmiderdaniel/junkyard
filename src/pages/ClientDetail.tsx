@@ -292,7 +292,7 @@ const ClientDetail: React.FC = () => {
   }, [user, clientId]);
 
   // Temporary diagnostic function to check receipt data structure - remove after debugging
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
   const diagnosticDataCheck = useCallback(() => {
     if (receipts.length === 0) {
       console.log('🔍 No receipts to diagnose');
@@ -608,9 +608,8 @@ const ClientDetail: React.FC = () => {
       ];
 
       // Generate filename
-      const clientNameSafe = client.name.replace(/[^a-zA-Z0-9]/g, '-');
-      const filterSuffix = searchTerm ? `-filtered` : '';
-      const filename = `client-${clientNameSafe}${filterSuffix}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const clientNameSafe = client.name.replace(/[^a-zA-Z0-9\s]/g, '');
+      const filename = `kwity_${clientNameSafe}.xlsx`;
 
       // Download the file
       const buffer = await workbook.xlsx.writeBuffer();

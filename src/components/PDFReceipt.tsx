@@ -460,7 +460,7 @@ export const usePDFReceipt = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `rachunek-${receipt.number.replace(/\//g, '-')}.pdf`;
+    link.download = `kwit_${receipt.number}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
