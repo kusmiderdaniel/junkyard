@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { db } from '../../firebase';
 import { collection, addDoc, setDoc, doc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
-import { normalizePolishText, createSearchableText } from '../../utils/textUtils';
+import {
+  normalizePolishText,
+  createSearchableText,
+} from '../../utils/textUtils';
 
 type ImportCollection = 'clients' | 'products' | 'categories' | 'receipts';
 
@@ -11,12 +14,16 @@ interface DataImportSectionProps {
   onError?: (message: string) => void;
 }
 
-const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onError }) => {
+const DataImportSection: React.FC<DataImportSectionProps> = ({
+  onSuccess,
+  onError,
+}) => {
   const { user } = useAuth();
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
-  const [importCollection, setImportCollection] = useState<ImportCollection>('clients');
+  const [importCollection, setImportCollection] =
+    useState<ImportCollection>('clients');
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importProgress, setImportProgress] = useState<{
     current: number;
@@ -53,34 +60,43 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
     setImporting(true);
     setImportError(null);
     setImportSuccess(null);
-    setImportProgress({ current: 0, total: 0, currentItem: 'Przygotowywanie...' });
+    setImportProgress({
+      current: 0,
+      total: 0,
+      currentItem: 'Przygotowywanie...',
+    });
 
     try {
       const fileContent = await importFile.text();
       const lines = fileContent.split('\n').filter(line => line.trim());
-      
+
       if (lines.length < 2) {
-        setImportError('Plik CSV musi zawierać co najmniej nagłówek i jeden wiersz danych');
+        setImportError(
+          'Plik CSV musi zawierać co najmniej nagłówek i jeden wiersz danych'
+        );
         return;
       }
 
       // Robust CSV parser that handles multiple columns with quoted fields containing commas
-      const parseCSVLine = (line: string, expectedFields?: number): string[] => {
+      const parseCSVLine = (
+        line: string,
+        expectedFields?: number
+      ): string[] => {
         // Clean the line more thoroughly
         line = line.replace(/\r?\n$/g, '').trim();
-        
+
         // Remove any trailing semicolons and tabs
         line = line.replace(/[;\t]+$/g, '');
-        
+
         const result: string[] = [];
         let current = '';
         let inQuotes = false;
         let quoteChar = '';
         let i = 0;
-        
+
         while (i < line.length) {
           const char = line[i];
-          
+
           if (!inQuotes) {
             // We're outside of quotes
             if (char === '"') {
@@ -91,7 +107,7 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
                 quoteCount++;
                 j++;
               }
-              
+
               if (quoteCount >= 2) {
                 // This is a multi-quote field (""field"" or """field""")
                 inQuotes = true;
@@ -120,7 +136,7 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
                 endQuoteCount++;
                 j++;
               }
-              
+
               if (endQuoteCount >= quoteChar.length) {
                 // This closes the quoted field
                 inQuotes = false;
@@ -135,67 +151,73 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
               current += char;
             }
           }
-          
+
           i++;
         }
-        
+
         // Add the final field
         result.push(current.trim());
-        
+
         // Clean up each field by removing any remaining surrounding quotes and unwanted characters
         const cleanedResult = result.map(field => {
           // Remove leading/trailing quotes but preserve internal content
           field = field.replace(/^"+|"+$/g, '');
-          
+
           // Remove any trailing semicolons and tabs from each field
           field = field.replace(/[;\t]+$/g, '');
-          
+
           return field.trim();
         });
-        
+
         // Ensure we have the expected number of fields by padding with empty strings if needed
         if (expectedFields && cleanedResult.length < expectedFields) {
           while (cleanedResult.length < expectedFields) {
             cleanedResult.push('');
           }
         }
-        
+
         return cleanedResult;
       };
 
       const headers = parseCSVLine(lines[0]).map(h => h.trim());
       const dataLines = lines.slice(1);
       const expectedFieldCount = headers.length;
-      
+
       let importedCount = 0;
       let skippedCount = 0;
 
       // Initialize progress
-      setImportProgress({ current: 0, total: dataLines.length, currentItem: 'Rozpoczynanie importu...' });
+      setImportProgress({
+        current: 0,
+        total: dataLines.length,
+        currentItem: 'Rozpoczynanie importu...',
+      });
 
       // For receipts, we need to group items by receipt before importing
       if (importCollection === 'receipts') {
         const receiptGroups = new Map<string, any>();
-        
+
         // First pass: group all rows by receipt
         for (let i = 0; i < dataLines.length; i++) {
           const line = dataLines[i];
-          
+
           try {
             if (!line.trim()) {
               skippedCount++;
               continue;
             }
 
-            const values = parseCSVLine(line, expectedFieldCount).map(v => v.trim());
+            const values = parseCSVLine(line, expectedFieldCount).map(v =>
+              v.trim()
+            );
             const recordData: any = {};
             headers.forEach((header, index) => {
               recordData[header] = values[index] || '';
             });
 
             // Get receipt identifier
-            const receiptId = recordData['ID Kwitu'] || recordData.id || recordData.ID || '';
-            const receiptNumber = recordData['Numer Kwitu'] || recordData.number || '';
+            const receiptId = recordData['ID Kwitu'] || '';
+            const receiptNumber = recordData['Numer Kwitu'] || '';
             const receiptKey = receiptId || receiptNumber;
 
             if (!receiptKey || !receiptKey.trim()) {
@@ -205,10 +227,10 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
 
             // Initialize receipt if not exists
             if (!receiptGroups.has(receiptKey)) {
-              const receiptDate = recordData['Data'] || recordData.date || '';
-              const clientId = recordData['ID Klienta'] || recordData.clientId || '';
-              const clientName = recordData['Nazwa Klienta'] || recordData.clientName || '';
-              const totalAmount = recordData['Łączna Kwota Kwitu'] || recordData.totalAmount || 0;
+              const receiptDate = recordData['Data'] || '';
+              const clientId = recordData['ID Klienta'] || '';
+              const clientName = recordData['Nazwa Klienta'] || '';
+              const totalAmount = recordData['Łączna Kwota Kwitu'] || 0;
 
               let processedDate;
               if (receiptDate) {
@@ -228,20 +250,20 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
                 clientId: clientId,
                 clientName: clientName,
                 totalAmount: parseFloat(totalAmount.toString()) || 0,
-                items: []
+                items: [],
               });
             }
 
             // Add item to receipt if it has content
-            const itemName = recordData['Nazwa Produktu'] || recordData.itemName || '';
-            const itemCode = recordData['Kod Produktu'] || recordData.itemCode || '';
-            const quantity = recordData['Ilość'] || recordData.quantity || 0;
-            
+            const itemName = recordData['Nazwa Produktu'] || '';
+            const itemCode = recordData['Kod Produktu'] || '';
+            const quantity = recordData['Ilość'] || 0;
+
             if (itemName || itemCode || quantity > 0) {
-              const unit = recordData['Jednostka'] || recordData.unit || '';
-              const sellPrice = recordData['Cena Sprzedaży'] || recordData.sell_price || 0;
-              const buyPrice = recordData['Cena Zakupu'] || recordData.buy_price || 0;
-              const totalPrice = recordData['Wartość Pozycji'] || recordData.total_price || 0;
+              const unit = recordData['Jednostka'] || '';
+              const sellPrice = recordData['Cena Sprzedaży'] || 0;
+              const buyPrice = recordData['Cena Zakupu'] || 0;
+              const totalPrice = recordData['Wartość Pozycji'] || 0;
 
               const item = {
                 itemName: itemName,
@@ -250,7 +272,7 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
                 unit: unit,
                 sell_price: parseFloat(sellPrice.toString()) || 0,
                 buy_price: parseFloat(buyPrice.toString()) || 0,
-                total_price: parseFloat(totalPrice.toString()) || 0
+                total_price: parseFloat(totalPrice.toString()) || 0,
               };
               receiptGroups.get(receiptKey)!.items.push(item);
             }
@@ -264,16 +286,20 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
 
         // Second pass: import grouped receipts
         const groupedReceipts = Array.from(receiptGroups.entries());
-        setImportProgress({ current: 0, total: groupedReceipts.length, currentItem: 'Importowanie zgrupowanych kwitów...' });
-        
+        setImportProgress({
+          current: 0,
+          total: groupedReceipts.length,
+          currentItem: 'Importowanie zgrupowanych kwitów...',
+        });
+
         for (let i = 0; i < groupedReceipts.length; i++) {
           const [receiptKey, receiptData] = groupedReceipts[i];
-          
+
           try {
-            setImportProgress({ 
-              current: i + 1, 
-              total: groupedReceipts.length, 
-              currentItem: `Importowanie kwitu: ${receiptData.number}` 
+            setImportProgress({
+              current: i + 1,
+              total: groupedReceipts.length,
+              currentItem: `Importowanie kwitu: ${receiptData.number}`,
             });
 
             // Use the receipt key as document ID
@@ -290,30 +316,39 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
         // Original logic for non-receipt collections
         for (let i = 0; i < dataLines.length; i++) {
           const line = dataLines[i];
-          
+
           try {
             if (!line.trim()) {
               skippedCount++;
-              setImportProgress({ 
-                current: i + 1, 
-                total: dataLines.length, 
-                currentItem: `Pomijanie pustego wiersza ${i + 1}` 
+              setImportProgress({
+                current: i + 1,
+                total: dataLines.length,
+                currentItem: `Pomijanie pustego wiersza ${i + 1}`,
               });
               continue;
             }
 
-            const values = parseCSVLine(line, expectedFieldCount).map(v => v.trim());
-            
+            const values = parseCSVLine(line, expectedFieldCount).map(v =>
+              v.trim()
+            );
+
             // Debug: Check field count for clients specifically
-            if (importCollection === 'clients' && values.length !== headers.length && process.env.NODE_ENV === 'development') {
-              console.warn(`Client import - Line ${i + 2}: Expected ${headers.length} fields, got ${values.length}`, {
-                line,
-                headers,
-                values,
-                rawLine: line
-              });
+            if (
+              importCollection === 'clients' &&
+              values.length !== headers.length &&
+              process.env.NODE_ENV === 'development'
+            ) {
+              console.warn(
+                `Client import - Line ${i + 2}: Expected ${headers.length} fields, got ${values.length}`,
+                {
+                  line,
+                  headers,
+                  values,
+                  rawLine: line,
+                }
+              );
             }
-            
+
             const recordData: any = {};
             headers.forEach((header, index) => {
               recordData[header] = values[index] || '';
@@ -323,24 +358,28 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
             recordData.userID = user.uid;
 
             // Update progress with current item info
-            const itemName = recordData.name || recordData.companyName || recordData.number || `Wiersz ${i + 1}`;
-            setImportProgress({ 
-              current: i + 1, 
-              total: dataLines.length, 
-              currentItem: `Przetwarzanie: ${itemName}` 
+            const itemName =
+              recordData.name ||
+              recordData.companyName ||
+              recordData.number ||
+              `Wiersz ${i + 1}`;
+            setImportProgress({
+              current: i + 1,
+              total: dataLines.length,
+              currentItem: `Przetwarzanie: ${itemName}`,
             });
 
             // Handle different collection types with more lenient validation and Polish column support
             let isValid = false;
             switch (importCollection) {
               case 'clients':
-                // Support both Polish and English column names
-                const clientName = recordData.name || recordData['nazwa'] || recordData['Nazwa'] || '';
-                const clientAddress = recordData.address || recordData['adres'] || recordData['Adres'] || '';
-                const clientDocNumber = recordData.documentNumber || recordData['numer_dokumentu'] || recordData['Numer Dokumentu'] || recordData['numerDokumentu'] || '';
-                const postalCode = recordData.postalCode || recordData['kod_pocztowy'] || recordData['Kod Pocztowy'] || recordData['kodPocztowy'] || '';
-                const city = recordData.city || recordData['miasto'] || recordData['Miasto'] || '';
-                
+                // Support Polish column names only (exact match with guide)
+                const clientName = recordData['Nazwa'] || '';
+                const clientAddress = recordData['Adres'] || '';
+                const clientDocNumber = recordData['Numer Dokumentu'] || '';
+                const postalCode = recordData['Kod Pocztowy'] || '';
+                const city = recordData['Miasto'] || '';
+
                 if (clientName && clientName.trim()) {
                   isValid = true;
                   // Update recordData with normalized field names
@@ -349,44 +388,64 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
                   recordData.documentNumber = clientDocNumber;
                   recordData.postalCode = postalCode;
                   recordData.city = city;
-                  
+
                   // Create fullAddress field
                   const addressParts = [];
-                  if (clientAddress.trim()) addressParts.push(clientAddress.trim());
+                  if (clientAddress.trim())
+                    addressParts.push(clientAddress.trim());
                   if (postalCode.trim() || city.trim()) {
-                    const locationPart = [postalCode.trim(), city.trim()].filter(Boolean).join(' ');
+                    const locationPart = [postalCode.trim(), city.trim()]
+                      .filter(Boolean)
+                      .join(' ');
                     if (locationPart) addressParts.push(locationPart);
                   }
                   recordData.fullAddress = addressParts.join(', ');
-                  
+
                   // Add normalized search fields for optimal search performance
                   recordData.name_lowercase = recordData.name.toLowerCase();
-                  recordData.name_normalized = normalizePolishText(recordData.name);
-                  recordData.address_normalized = normalizePolishText(recordData.address);
-                  recordData.documentNumber_normalized = normalizePolishText(recordData.documentNumber);
-                  recordData.postalCode_normalized = normalizePolishText(recordData.postalCode);
-                  recordData.city_normalized = normalizePolishText(recordData.city);
-                  recordData.fullAddress_normalized = normalizePolishText(recordData.fullAddress);
+                  recordData.name_normalized = normalizePolishText(
+                    recordData.name
+                  );
+                  recordData.address_normalized = normalizePolishText(
+                    recordData.address
+                  );
+                  recordData.documentNumber_normalized = normalizePolishText(
+                    recordData.documentNumber
+                  );
+                  recordData.postalCode_normalized = normalizePolishText(
+                    recordData.postalCode
+                  );
+                  recordData.city_normalized = normalizePolishText(
+                    recordData.city
+                  );
+                  recordData.fullAddress_normalized = normalizePolishText(
+                    recordData.fullAddress
+                  );
                   recordData.searchableText = createSearchableText([
-                    recordData.name, 
-                    recordData.address, 
+                    recordData.name,
+                    recordData.address,
                     recordData.documentNumber,
                     recordData.postalCode,
                     recordData.city,
-                    recordData.fullAddress
+                    recordData.fullAddress,
                   ]);
                 }
                 break;
               case 'products':
-                // Support both Polish and English column names
-                const productName = recordData.name || recordData['nazwa'] || recordData['Nazwa'] || '';
-                const itemCode = recordData.itemCode || recordData['kod_produktu'] || recordData['Kod Produktu'] || recordData['kodProduktu'] || '';
-                const categoryId = recordData.categoryId || recordData['kategoria_id'] || recordData['ID Kategorii'] || recordData['kategoriaId'] || '';
-                const buyPrice = recordData.buy_price || recordData['cena_zakupu'] || recordData['Cena Zakupu'] || recordData['cenaZakupu'] || 0;
-                const sellPrice = recordData.sell_price || recordData['cena_sprzedazy'] || recordData['Cena Sprzedaży'] || recordData['cenaSprzedazy'] || 0;
-                const weightAdj = recordData.weightAdjustment || recordData['korekcja_wagi'] || recordData['Korekcja Wagi'] || recordData['korektaWagi'] || 1;
-                
-                if (productName && productName.trim() && itemCode && itemCode.trim()) {
+                // Support Polish column names only (exact match with guide)
+                const productName = recordData['Nazwa'] || '';
+                const itemCode = recordData['Kod Produktu'] || '';
+                const categoryId = recordData['ID Kategorii'] || '';
+                const buyPrice = recordData['Cena Zakupu'] || 0;
+                const sellPrice = recordData['Cena Sprzedazy'] || 0;
+                const weightAdj = recordData['Korekta Wagi'] || 1;
+
+                if (
+                  productName &&
+                  productName.trim() &&
+                  itemCode &&
+                  itemCode.trim()
+                ) {
                   isValid = true;
                   // Update recordData with normalized field names
                   recordData.name = productName;
@@ -394,42 +453,52 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
                   recordData.categoryId = categoryId;
                   recordData.buy_price = parseFloat(buyPrice.toString()) || 0;
                   recordData.sell_price = parseFloat(sellPrice.toString()) || 0;
-                  recordData.weightAdjustment = parseFloat(weightAdj.toString()) || 1;
+                  recordData.weightAdjustment =
+                    parseFloat(weightAdj.toString()) || 1;
                 }
                 break;
               case 'categories':
-                // Support both Polish and English column names
-                const categoryName = recordData.name || recordData['nazwa'] || recordData['Nazwa'] || '';
-                
+                // Support Polish column names only (exact match with guide)
+                const categoryName = recordData['Nazwa'] || '';
+
                 if (categoryName && categoryName.trim()) {
                   isValid = true;
                   recordData.name = categoryName;
                 }
                 break;
-
             }
 
             if (!isValid) {
-              const itemName = recordData.name || recordData.companyName || recordData.number || `Wiersz ${i + 2}`;
+              const itemName =
+                recordData.name ||
+                recordData.companyName ||
+                recordData.number ||
+                `Wiersz ${i + 2}`;
               if (process.env.NODE_ENV === 'development') {
-                console.warn(`❌ Pominięto rekord (wiersz ${i + 2}): "${itemName}" - nie spełnia wymagań walidacji dla typu "${importCollection}"`, {
-                  lineNumber: i + 2,
-                  recordData,
-                  rawLine: line,
-                  parsedValues: values
-                });
+                console.warn(
+                  `❌ Pominięto rekord (wiersz ${i + 2}): "${itemName}" - nie spełnia wymagań walidacji dla typu "${importCollection}"`,
+                  {
+                    lineNumber: i + 2,
+                    recordData,
+                    rawLine: line,
+                    parsedValues: values,
+                  }
+                );
               }
               skippedCount++;
               continue;
             }
 
             // Use the ID from CSV if provided, otherwise generate one
-            const documentId = recordData.id || recordData.ID;
+            const documentId = recordData.ID || recordData.id;
             if (documentId && documentId.trim()) {
-              // Remove the id field from the data since it will be the document ID
-              const { id, ID, ...dataWithoutId } = recordData;
+              // Remove the ID field from the data since it will be the document ID
+              const { ID, id, ...dataWithoutId } = recordData;
               // Add document with specified ID
-              await setDoc(doc(db, importCollection, documentId.trim()), dataWithoutId);
+              await setDoc(
+                doc(db, importCollection, documentId.trim()),
+                dataWithoutId
+              );
             } else {
               // If no ID provided, let Firestore auto-generate
               await addDoc(collection(db, importCollection), recordData);
@@ -446,23 +515,25 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
       }
 
       // Final progress update
-      setImportProgress({ 
-        current: dataLines.length, 
-        total: dataLines.length, 
-        currentItem: 'Import zakończony!' 
+      setImportProgress({
+        current: dataLines.length,
+        total: dataLines.length,
+        currentItem: 'Import zakończony!',
       });
 
       const successMessage = `Import zakończony: ${importedCount} rekordów zaimportowano, ${skippedCount} pominiętych.`;
       setImportSuccess(successMessage);
       onSuccess?.(successMessage);
-      
+
       // Reset form
       setImportFile(null);
-      const fileInput = document.getElementById('import-file-input') as HTMLInputElement;
+      const fileInput = document.getElementById(
+        'import-file-input'
+      ) as HTMLInputElement;
       if (fileInput) fileInput.value = '';
-      
     } catch (error) {
-      const errorMessage = 'Błąd podczas importu z CSV. Sprawdź format pliku i spróbuj ponownie.';
+      const errorMessage =
+        'Błąd podczas importu z CSV. Sprawdź format pliku i spróbuj ponownie.';
       setImportError(errorMessage);
       onError?.(errorMessage);
     } finally {
@@ -488,7 +559,9 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
           </label>
           <select
             value={importCollection}
-            onChange={(e) => setImportCollection(e.target.value as ImportCollection)}
+            onChange={e =>
+              setImportCollection(e.target.value as ImportCollection)
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="clients">Klienci</option>
@@ -512,26 +585,50 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
             />
             <div className="flex items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
               <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg className="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                <svg
+                  className="w-8 h-8 mb-4 text-gray-500"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 20 16"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                  />
                 </svg>
                 <p className="mb-2 text-sm text-gray-500">
-                  <span className="font-semibold">Kliknij aby wybrać plik</span> lub przeciągnij go tutaj
+                  <span className="font-semibold">Kliknij aby wybrać plik</span>{' '}
+                  lub przeciągnij go tutaj
                 </p>
                 <p className="text-xs text-gray-500">CSV (MAX. 10MB)</p>
               </div>
             </div>
           </div>
           <p className="text-sm text-gray-500 mt-2">
-            Wybierz plik CSV z danymi do importu. Pierwszy wiersz powinien zawierać nagłówki kolumn.
+            Wybierz plik CSV z danymi do importu. Pierwszy wiersz powinien
+            zawierać nagłówki kolumn.
           </p>
         </div>
 
         {importFile && (
           <div className="p-4 bg-green-50 border border-green-300 rounded-lg">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5 text-green-600 mr-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div>
                 <p className="text-green-700 text-sm font-medium">
@@ -551,22 +648,29 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
             <div className="mb-2">
               <div className="flex justify-between text-sm font-medium text-blue-700">
                 <span>Postęp importu</span>
-                <span>{importProgress.current} / {importProgress.total}</span>
+                <span>
+                  {importProgress.current} / {importProgress.total}
+                </span>
               </div>
               <div className="text-xs text-blue-600 mt-1">
                 {importProgress.currentItem}
               </div>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2.5">
-              <div 
+              <div
                 className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                style={{ 
-                  width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%` 
+                style={{
+                  width: `${importProgress.total > 0 ? (importProgress.current / importProgress.total) * 100 : 0}%`,
                 }}
               ></div>
             </div>
             <div className="text-xs text-blue-600 mt-1 text-right">
-              {importProgress.total > 0 ? Math.round((importProgress.current / importProgress.total) * 100) : 0}%
+              {importProgress.total > 0
+                ? Math.round(
+                    (importProgress.current / importProgress.total) * 100
+                  )
+                : 0}
+              %
             </div>
           </div>
         )}
@@ -597,8 +701,18 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
               </>
             ) : (
               <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
+                  />
                 </svg>
                 Importuj z CSV
               </>
@@ -611,38 +725,51 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
         <h3 className="text-sm font-medium text-gray-700 mb-2">Format CSV:</h3>
         <div className="text-xs text-gray-600 space-y-2">
           <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
-            <p className="text-blue-700 font-medium">💡 Wskazówka: Dodaj kolumnę "id" lub "ID" aby określić identyfikator dokumentu w bazie danych.</p>
-          </div>
-          <div className="mb-3 p-2 bg-green-50 rounded border border-green-200">
-            <p className="text-green-700 font-medium">🌍 Obsługa wielojęzyczna: Kolumny mogą mieć nazwy polskie lub angielskie.</p>
-          </div>
-          <div>
-            <p><strong>Klienci:</strong></p>
-            <p className="ml-2 text-gray-600">• Angielskie: id, name, address, documentNumber, postalCode, city</p>
-            <p className="ml-2 text-gray-600">• Polskie: id, nazwa/Nazwa, adres/Adres, numer_dokumentu/"Numer Dokumentu"/numerDokumentu, kod_pocztowy/"Kod Pocztowy"/kodPocztowy, miasto/Miasto</p>
-            <p className="text-blue-600 text-xs ml-2">✨ Automatycznie dodawane: pola znormalizowane dla szybkiego wyszukiwania z polskimi znakami + fullAddress</p>
-          </div>
-          <div>
-            <p><strong>Produkty:</strong></p>
-            <p className="ml-2 text-gray-600">• Angielskie: id, name, itemCode, categoryId, buy_price, sell_price, weightAdjustment</p>
-            <p className="ml-2 text-gray-600">• Polskie: id, nazwa/Nazwa, kod_produktu/"Kod Produktu"/kodProduktu, kategoria_id/"ID Kategorii"/kategoriaId, cena_zakupu/"Cena Zakupu"/cenaZakupu, cena_sprzedazy/"Cena Sprzedaży"/cenaSprzedazy, korekcja_wagi/"Korekcja Wagi"/korektaWagi</p>
-          </div>
-          <div>
-            <p><strong>Kategorie:</strong></p>
-            <p className="ml-2 text-gray-600">• Angielskie: id, name</p>
-            <p className="ml-2 text-gray-600">• Polskie: id, nazwa/Nazwa</p>
+            <p className="text-blue-700 font-medium">
+              💡 Wskazówka: Dodaj kolumnę "ID" aby określić identyfikator
+              dokumentu w bazie danych.
+            </p>
           </div>
 
           <div>
-            <p><strong>Kwity:</strong></p>
-            <p className="ml-2 text-gray-600">• Polskie: ID Kwitu, Numer Kwitu, Data, ID Klienta, Nazwa Klienta, Łączna Kwota Kwitu, Nazwa Produktu, Kod Produktu, Ilość, Jednostka, Cena Sprzedaży, Cena Zakupu, Wartość Pozycji</p>
-            <p className="ml-2 text-gray-600">• Angielskie: id, number, date, clientId, clientName, totalAmount, itemName, itemCode, quantity, unit, sell_price, buy_price, total_price</p>
-            <p className="text-gray-500 italic ml-2">Uwaga: Format eksportu zawiera jeden wiersz na każdą pozycję kwitu. Można używać polskich lub angielskich nazw kolumn.</p>
+            <p>
+              <strong>Klienci:</strong>
+            </p>
+            <p className="ml-2 text-gray-600">
+              ID, Nazwa, Adres, Numer Dokumentu, Kod Pocztowy, Miasto
+            </p>
           </div>
+
           <div>
-            <p><strong>Dane Firmy:</strong></p>
-            <p className="ml-2 text-gray-600">• Angielskie: id, companyName, numberNIP, numberREGON, address, postalCode, city, email, phoneNumber</p>
-            <p className="ml-2 text-gray-600">• Polskie: id, nazwa_firmy/"Nazwa Firmy"/nazwaFirmy, nip/NIP/numer_nip/"Numer NIP", regon/REGON/numer_regon/"Numer REGON", adres/Adres, kod_pocztowy/"Kod Pocztowy"/kodPocztowy, miasto/Miasto, e-mail/E-mail/Email, telefon/Telefon/numer_telefonu/"Numer Telefonu"</p>
+            <p>
+              <strong>Produkty:</strong>
+            </p>
+            <p className="ml-2 text-gray-600">
+              ID, Nazwa, Kod Produktu, ID Kategorii, Cena Zakupu, Cena
+              Sprzedazy, Korekta Wagi
+            </p>
+          </div>
+
+          <div>
+            <p>
+              <strong>Kategorie:</strong>
+            </p>
+            <p className="ml-2 text-gray-600">ID, Nazwa</p>
+          </div>
+
+          <div>
+            <p>
+              <strong>Kwity:</strong>
+            </p>
+            <p className="ml-2 text-gray-600">
+              ID Kwitu, Numer Kwitu, Data, ID Klienta, Nazwa Klienta, Łączna
+              Kwota Kwitu, Nazwa Produktu, Kod Produktu, Ilość,Jednostka, Cena
+              Sprzedaży, Cena Zakupu, Wartość Pozycji
+            </p>
+            <p className="text-gray-500 italic ml-2">
+              Uwaga: Format eksportu zawiera jeden wiersz na każdą pozycję
+              kwitu.
+            </p>
           </div>
         </div>
       </div>
@@ -650,4 +777,4 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({ onSuccess, onErro
   );
 };
 
-export default DataImportSection; 
+export default DataImportSection;

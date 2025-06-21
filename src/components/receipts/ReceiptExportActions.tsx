@@ -5,9 +5,12 @@ import { pdf } from '@react-pdf/renderer';
 import toast from 'react-hot-toast';
 import * as ExcelJS from 'exceljs';
 import ReceiptsSummaryDocument from './ReceiptsSummaryDocument';
-import { Receipt, Client, CompanyDetails, ExcelRowData } from '../../types/receipt';
-
-
+import {
+  Receipt,
+  Client,
+  CompanyDetails,
+  ExcelRowData,
+} from '../../types/receipt';
 
 interface ReceiptExportActionsProps {
   user: any;
@@ -26,16 +29,15 @@ export const useReceiptExportActions = ({
   clients,
   companyDetails,
   getClientName,
-  formatMonthLabel
+  formatMonthLabel,
 }: ReceiptExportActionsProps) => {
-
   const handleDownloadSummary = async () => {
     if (!user || !companyDetails) return;
-    
+
     try {
       // Fetch receipts based on current filter context
       const receiptsCollection = collection(db, 'receipts');
-      
+
       let summaryQuery = query(
         receiptsCollection,
         where('userID', '==', user.uid),
@@ -46,8 +48,16 @@ export const useReceiptExportActions = ({
       if (selectedMonth) {
         const [year, month] = selectedMonth.split('-');
         const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-        const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-        
+        const endDate = new Date(
+          parseInt(year),
+          parseInt(month),
+          0,
+          23,
+          59,
+          59,
+          999
+        );
+
         summaryQuery = query(
           receiptsCollection,
           where('userID', '==', user.uid),
@@ -61,31 +71,34 @@ export const useReceiptExportActions = ({
       const allFilteredReceipts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date.toDate()
+        date: doc.data().date.toDate(),
       })) as Receipt[];
 
       // Apply search filter if present
       const finalFilteredReceipts = allFilteredReceipts.filter(receipt => {
         if (!searchTerm) return true;
-        
+
         const searchLower = searchTerm.toLowerCase();
-        
+
         if (receipt.number.toLowerCase().includes(searchLower)) {
           return true;
         }
-        
+
         const clientName = getClientName(receipt);
         if (clientName.toLowerCase().includes(searchLower)) {
           return true;
         }
-        
-        if (receipt.items.some(item => 
-          item.itemName.toLowerCase().includes(searchLower) ||
-          item.itemCode.toLowerCase().includes(searchLower)
-        )) {
+
+        if (
+          receipt.items.some(
+            item =>
+              item.itemName.toLowerCase().includes(searchLower) ||
+              item.itemCode.toLowerCase().includes(searchLower)
+          )
+        ) {
           return true;
         }
-        
+
         return false;
       });
 
@@ -102,10 +115,13 @@ export const useReceiptExportActions = ({
         return parts.length > 0 ? parts.join(' | ') : 'Wszystkie kwity';
       };
 
-             // Calculate total amount
-       const totalAmount = finalFilteredReceipts.reduce((sum, receipt) => sum + receipt.totalAmount, 0);
+      // Calculate total amount
+      const totalAmount = finalFilteredReceipts.reduce(
+        (sum, receipt) => sum + receipt.totalAmount,
+        0
+      );
 
-       const doc = (
+      const doc = (
         <ReceiptsSummaryDocument
           receipts={finalFilteredReceipts}
           companyDetails={companyDetails}
@@ -119,7 +135,7 @@ export const useReceiptExportActions = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `podsumowanie-kwitow-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.download = `podsumowanie_kwitów.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -132,11 +148,11 @@ export const useReceiptExportActions = ({
 
   const handleExportToExcel = async () => {
     if (!user) return;
-    
+
     try {
       // Fetch ALL receipts that match the current filter context
       const receiptsCollection = collection(db, 'receipts');
-      
+
       let exportQuery = query(
         receiptsCollection,
         where('userID', '==', user.uid),
@@ -147,8 +163,16 @@ export const useReceiptExportActions = ({
       if (selectedMonth) {
         const [year, month] = selectedMonth.split('-');
         const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-        const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
-        
+        const endDate = new Date(
+          parseInt(year),
+          parseInt(month),
+          0,
+          23,
+          59,
+          59,
+          999
+        );
+
         exportQuery = query(
           receiptsCollection,
           where('userID', '==', user.uid),
@@ -162,56 +186,59 @@ export const useReceiptExportActions = ({
       const allFilteredReceipts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date.toDate()
+        date: doc.data().date.toDate(),
       })) as Receipt[];
 
       // Apply search filter if present
       const finalFilteredReceipts = allFilteredReceipts.filter(receipt => {
         if (!searchTerm) return true;
-        
+
         const searchLower = searchTerm.toLowerCase();
-        
+
         if (receipt.number.toLowerCase().includes(searchLower)) {
           return true;
         }
-        
+
         const clientName = getClientName(receipt);
         if (clientName.toLowerCase().includes(searchLower)) {
           return true;
         }
-        
-        if (receipt.items.some(item => 
-          item.itemName.toLowerCase().includes(searchLower) ||
-          item.itemCode.toLowerCase().includes(searchLower)
-        )) {
+
+        if (
+          receipt.items.some(
+            item =>
+              item.itemName.toLowerCase().includes(searchLower) ||
+              item.itemCode.toLowerCase().includes(searchLower)
+          )
+        ) {
           return true;
         }
-        
+
         return false;
       });
 
       // Create detailed data with one row per item
       const excelData: ExcelRowData[] = [];
-      
+
       finalFilteredReceipts.forEach(receipt => {
         const clientName = getClientName(receipt);
         const receiptDate = receipt.date.toLocaleDateString('pl-PL', {
           day: '2-digit',
           month: '2-digit',
-          year: 'numeric'
+          year: 'numeric',
         });
 
         receipt.items.forEach(item => {
           excelData.push({
             'Numer kwitu': receipt.number,
-            'Data': receiptDate,
-            'Klient': clientName,
+            Data: receiptDate,
+            Klient: clientName,
             'Nazwa towaru': item.itemName,
             'Kod towaru': item.itemCode,
-            'Ilość': item.quantity,
-            'Jednostka': item.unit,
+            Ilość: item.quantity,
+            Jednostka: item.unit,
             'Cena zakupu': item.buy_price,
-            'Wartość pozycji': item.total_price
+            'Wartość pozycji': item.total_price,
           });
         });
       });
@@ -224,59 +251,73 @@ export const useReceiptExportActions = ({
       // Create workbook and worksheet
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Szczegóły kwitów');
-      
+
       const currentDate = new Date().toLocaleDateString('pl-PL', {
         day: '2-digit',
         month: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
       });
-      
+
       let currentRow = 1;
-      
+
       // Add report header
-      worksheet.getCell(`A${currentRow}`).value = `Raport wygenerowany: ${currentDate}`;
+      worksheet.getCell(`A${currentRow}`).value =
+        `Raport wygenerowany: ${currentDate}`;
       worksheet.getCell(`A${currentRow}`).font = { bold: true };
       currentRow += 2;
-      
+
       // Add filter context
       if (selectedMonth || searchTerm) {
         worksheet.getCell(`A${currentRow}`).value = 'Zastosowane filtry:';
         worksheet.getCell(`A${currentRow}`).font = { bold: true };
         currentRow++;
-        
+
         if (selectedMonth) {
           const monthLabel = formatMonthLabel(selectedMonth);
-          worksheet.getCell(`A${currentRow}`).value = `• Miesiąc: ${monthLabel}`;
+          worksheet.getCell(`A${currentRow}`).value =
+            `• Miesiąc: ${monthLabel}`;
           currentRow++;
         }
-        
+
         if (searchTerm) {
-          worksheet.getCell(`A${currentRow}`).value = `• Wyszukiwanie: "${searchTerm}"`;
+          worksheet.getCell(`A${currentRow}`).value =
+            `• Wyszukiwanie: "${searchTerm}"`;
           currentRow++;
         }
-        
+
         currentRow++; // Extra spacing
       } else {
         worksheet.getCell(`A${currentRow}`).value = 'Filtry: Wszystkie kwity';
         currentRow += 2;
       }
-      
-      worksheet.getCell(`A${currentRow}`).value = `Łączna liczba pozycji: ${excelData.length}`;
+
+      worksheet.getCell(`A${currentRow}`).value =
+        `Łączna liczba pozycji: ${excelData.length}`;
       currentRow += 3;
-      
+
       // Add table headers
-      const headers = ['Numer kwitu', 'Data', 'Klient', 'Nazwa towaru', 'Kod towaru', 'Ilość', 'Jednostka', 'Cena zakupu', 'Wartość pozycji'];
+      const headers = [
+        'Numer kwitu',
+        'Data',
+        'Klient',
+        'Nazwa towaru',
+        'Kod towaru',
+        'Ilość',
+        'Jednostka',
+        'Cena zakupu',
+        'Wartość pozycji',
+      ];
       const headerRow = worksheet.getRow(currentRow);
       headerRow.values = headers;
       headerRow.font = { bold: true };
       headerRow.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF366092' }
+        fgColor: { argb: 'FF366092' },
       };
       headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       currentRow++;
-      
+
       // Add data rows
       excelData.forEach(rowData => {
         const row = worksheet.getRow(currentRow);
@@ -289,11 +330,11 @@ export const useReceiptExportActions = ({
           rowData['Ilość'],
           rowData['Jednostka'],
           rowData['Cena zakupu'],
-          rowData['Wartość pozycji']
+          rowData['Wartość pozycji'],
         ];
         currentRow++;
       });
-      
+
       // Set column widths
       worksheet.columns = [
         { width: 15 }, // Numer kwitu
@@ -308,12 +349,13 @@ export const useReceiptExportActions = ({
       ];
 
       // Generate filename
-      const filterSuffix = searchTerm || selectedMonth ? `-filtered` : '';
-      const filename = `receipts-details${filterSuffix}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filename = `kwity.xlsx`;
 
       // Download the file
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -327,6 +369,6 @@ export const useReceiptExportActions = ({
 
   return {
     handleDownloadSummary,
-    handleExportToExcel
+    handleExportToExcel,
   };
-}; 
+};
