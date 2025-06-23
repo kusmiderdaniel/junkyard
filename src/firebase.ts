@@ -10,7 +10,7 @@ const firebaseConfig = {
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
 };
 
 // Validate that all required environment variables are present
@@ -20,13 +20,22 @@ const requiredEnvVars = [
   'REACT_APP_FIREBASE_PROJECT_ID',
   'REACT_APP_FIREBASE_STORAGE_BUCKET',
   'REACT_APP_FIREBASE_MESSAGING_SENDER_ID',
-  'REACT_APP_FIREBASE_APP_ID'
+  'REACT_APP_FIREBASE_APP_ID',
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 if (missingEnvVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  throw new Error(
+    `Missing required environment variables: ${missingEnvVars.join(', ')}`
+  );
 }
+
+// Debug: Log the configuration being used
+console.log('🔥 Firebase Configuration Debug:');
+console.log('Project ID:', firebaseConfig.projectId);
+console.log('Auth Domain:', firebaseConfig.authDomain);
+console.log('Environment:', process.env.REACT_APP_ENV);
+console.log('Node Environment:', process.env.NODE_ENV);
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -37,7 +46,10 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 // Enable Firebase emulator in development
-if (process.env.NODE_ENV === 'development' && process.env.REACT_APP_ENV === 'development') {
+if (
+  process.env.NODE_ENV === 'development' &&
+  process.env.REACT_APP_ENV === 'development'
+) {
   try {
     connectAuthEmulator(auth, 'http://localhost:9099');
     connectFirestoreEmulator(db, 'localhost', 8082);
@@ -58,4 +70,4 @@ export const getCurrentUserId = () => {
     throw new Error('User not authenticated');
   }
   return user.uid;
-}; 
+};

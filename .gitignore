@@ -32,6 +32,7 @@ yarn-error.log*
 .env.development.local
 .env.production.local
 .env.staging.local
+.env.staging
 
 # Firebase
 .firebase/
