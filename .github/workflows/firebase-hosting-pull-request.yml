@@ -23,3 +23,4 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JUNKYARD_31ADE }}
           projectId: junkyard-31ade
+          channelId: preview
