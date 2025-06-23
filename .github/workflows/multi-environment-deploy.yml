@@ -222,4 +222,4 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}'
           projectId: ${{ github.event.inputs.environment == 'development' && 'junkyard-dev-9497a' || 'junkyard-staging' }}
-          channelId: live 
+          channelId: live
