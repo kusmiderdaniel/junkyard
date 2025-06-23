@@ -20,7 +20,11 @@ interface ProductsTableProps {
   categories: CategoryDoc[];
   updating: string[];
   priceEdits: { [key: string]: string };
-  onPriceChange: (productId: string, field: 'buy_price' | 'sell_price', value: string) => void;
+  onPriceChange: (
+    productId: string,
+    field: 'buy_price' | 'sell_price',
+    value: string
+  ) => void;
   onPriceBlur: (productId: string, field: 'buy_price' | 'sell_price') => void;
   onEditProduct: (product: Product) => void;
   onEditCategory: (category: CategoryDoc) => void;
@@ -36,18 +40,26 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
   onPriceBlur,
   onEditProduct,
   onEditCategory,
-  onDeleteCategory
+  onDeleteCategory,
 }) => {
-  const getPriceEditValue = (productId: string, field: 'buy_price' | 'sell_price', originalValue: number) => {
+  const getPriceEditValue = (
+    productId: string,
+    field: 'buy_price' | 'sell_price',
+    originalValue: number
+  ) => {
     const editKey = `${productId}-${field}`;
-    return priceEdits[editKey] !== undefined ? priceEdits[editKey] : originalValue.toString();
+    return priceEdits[editKey] !== undefined
+      ? priceEdits[editKey]
+      : originalValue.toFixed(2);
   };
 
   // Group products by category and include empty categories
-  const groupedProducts = categories.reduce<{ [key: string]: { category: CategoryDoc, products: Product[] } }>((acc, category) => {
+  const groupedProducts = categories.reduce<{
+    [key: string]: { category: CategoryDoc; products: Product[] };
+  }>((acc, category) => {
     acc[category.id] = {
       category,
-      products: products.filter(product => product.categoryId === category.id)
+      products: products.filter(product => product.categoryId === category.id),
     };
     return acc;
   }, {});
@@ -57,7 +69,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
     if (product.categoryId && !groupedProducts[product.categoryId]) {
       groupedProducts[product.categoryId] = {
         category: { id: product.categoryId, name: 'Unknown Category' },
-        products: products.filter(p => p.categoryId === product.categoryId)
+        products: products.filter(p => p.categoryId === product.categoryId),
       };
     }
   });
@@ -65,8 +77,12 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
   // Create masonry layout: distribute items into two columns
   const masonryColumns = useMemo(() => {
     const items = Object.entries(groupedProducts);
-    const column1: Array<[string, { category: CategoryDoc, products: Product[] }]> = [];
-    const column2: Array<[string, { category: CategoryDoc, products: Product[] }]> = [];
+    const column1: Array<
+      [string, { category: CategoryDoc; products: Product[] }]
+    > = [];
+    const column2: Array<
+      [string, { category: CategoryDoc; products: Product[] }]
+    > = [];
 
     // Simple distribution: alternate items between columns
     items.forEach((item, index) => {
@@ -80,7 +96,13 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
     return { column1, column2 };
   }, [groupedProducts]);
 
-  const renderCategorySection = (categoryId: string, { category, products: categoryProducts }: { category: CategoryDoc, products: Product[] }) => (
+  const renderCategorySection = (
+    categoryId: string,
+    {
+      category,
+      products: categoryProducts,
+    }: { category: CategoryDoc; products: Product[] }
+  ) => (
     <div key={categoryId} className="w-full">
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="flex justify-between items-center p-4 bg-gray-50 border-b">
@@ -94,14 +116,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                 className="text-gray-400 hover:text-primary-600 transition-colors p-1 rounded-full hover:bg-gray-100"
                 aria-label="Edytuj kategorię"
               >
-                <svg 
-                  width="18" 
-                  height="18" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -115,17 +137,25 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                     ? 'text-gray-300 cursor-not-allowed'
                     : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
                 }`}
-                aria-label={categoryProducts.length > 0 ? "Nie można usunąć kategorii z produktami" : "Usuń kategorię"}
-                title={categoryProducts.length > 0 ? "Nie można usunąć kategorii z produktami" : "Usuń kategorię"}
+                aria-label={
+                  categoryProducts.length > 0
+                    ? 'Nie można usunąć kategorii z produktami'
+                    : 'Usuń kategorię'
+                }
+                title={
+                  categoryProducts.length > 0
+                    ? 'Nie można usunąć kategorii z produktami'
+                    : 'Usuń kategorię'
+                }
               >
-                <svg 
-                  width="18" 
-                  height="18" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 >
                   <polyline points="3,6 5,6 21,6"></polyline>
@@ -158,10 +188,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {categoryProducts.length > 0 ? (
-                categoryProducts.map((product) => (
-                  <tr 
+                categoryProducts.map(product => (
+                  <tr
                     key={product.id}
-                    className={updating.includes(product.id) ? 'bg-gray-50' : 'hover:bg-gray-50'}
+                    className={
+                      updating.includes(product.id)
+                        ? 'bg-gray-50'
+                        : 'hover:bg-gray-50'
+                    }
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {product.name}
@@ -171,37 +205,53 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex justify-end items-center">
-                        <div className="relative inline-flex items-center w-24">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             step="0.01"
-                            value={getPriceEditValue(product.id, 'buy_price', product.buy_price)}
-                            onChange={(e) => onPriceChange(product.id, 'buy_price', e.target.value)}
+                            value={getPriceEditValue(
+                              product.id,
+                              'buy_price',
+                              product.buy_price
+                            )}
+                            onChange={e =>
+                              onPriceChange(
+                                product.id,
+                                'buy_price',
+                                e.target.value
+                              )
+                            }
                             onBlur={() => onPriceBlur(product.id, 'buy_price')}
-                            className="block w-full px-2 py-1 text-right pr-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            className="w-20 px-2 py-1 text-right border rounded focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                             disabled={updating.includes(product.id)}
                           />
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                            <span className="text-gray-500 text-xs">zł</span>
-                          </div>
+                          <span className="text-gray-500 text-xs">zł</span>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <div className="flex justify-end items-center">
-                        <div className="relative inline-flex items-center w-24">
+                        <div className="flex items-center gap-1">
                           <input
                             type="number"
                             step="0.01"
-                            value={getPriceEditValue(product.id, 'sell_price', product.sell_price)}
-                            onChange={(e) => onPriceChange(product.id, 'sell_price', e.target.value)}
+                            value={getPriceEditValue(
+                              product.id,
+                              'sell_price',
+                              product.sell_price
+                            )}
+                            onChange={e =>
+                              onPriceChange(
+                                product.id,
+                                'sell_price',
+                                e.target.value
+                              )
+                            }
                             onBlur={() => onPriceBlur(product.id, 'sell_price')}
-                            className="block w-full px-2 py-1 text-right pr-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            className="w-20 px-2 py-1 text-right border rounded focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                             disabled={updating.includes(product.id)}
                           />
-                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                            <span className="text-gray-500 text-xs">zł</span>
-                          </div>
+                          <span className="text-gray-500 text-xs">zł</span>
                         </div>
                       </div>
                     </td>
@@ -211,14 +261,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                         className="text-gray-400 hover:text-primary-600 transition-colors p-1 rounded-full hover:bg-gray-100"
                         aria-label="Edytuj produkt"
                       >
-                        <svg 
-                          width="20" 
-                          height="20" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
                           strokeLinejoin="round"
                         >
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -230,7 +280,10 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 italic">
+                  <td
+                    colSpan={5}
+                    className="px-6 py-8 text-center text-gray-500 italic"
+                  >
                     Brak produktów w tej kategorii
                   </td>
                 </tr>
@@ -247,14 +300,14 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
       <div className="flex gap-6">
         {/* Column 1 */}
         <div className="flex-1 space-y-6">
-          {masonryColumns.column1.map(([categoryId, data]) => 
+          {masonryColumns.column1.map(([categoryId, data]) =>
             renderCategorySection(categoryId, data)
           )}
         </div>
 
         {/* Column 2 */}
         <div className="flex-1 space-y-6">
-          {masonryColumns.column2.map(([categoryId, data]) => 
+          {masonryColumns.column2.map(([categoryId, data]) =>
             renderCategorySection(categoryId, data)
           )}
         </div>
@@ -267,4 +320,4 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
   );
 };
 
-export default ProductsTable; 
+export default ProductsTable;

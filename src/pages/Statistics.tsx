@@ -449,9 +449,7 @@ const Statistics: React.FC = () => {
       ];
 
       // Generate filename
-      const filterSuffix =
-        selectedItemCode || dateFilter !== 'thisMonth' ? `-filtered` : '';
-      const filename = `statistics${filterSuffix}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filename = `podsumowanie_produktów.xlsx`;
 
       // Download the file
       const buffer = await workbook.xlsx.writeBuffer();
