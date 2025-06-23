@@ -16,12 +16,14 @@ import { usePDFReceipt } from '../components/PDFReceipt';
 import * as ExcelJS from 'exceljs';
 
 interface ReceiptItem {
+  productId: string;
   itemName: string;
   itemCode: string;
   quantity: number;
   unit: string;
   sell_price: number;
   buy_price: number;
+  weightAdjustment: number;
   total_price: number;
 }
 
@@ -747,30 +749,28 @@ const ClientDetail: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-800">Kwity Klienta</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={handleExportToExcel}
-              disabled={loading || filteredReceipts.length === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          <button
+            onClick={handleExportToExcel}
+            disabled={loading || filteredReceipts.length === 0}
+            className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14,2 14,8 20,8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="21"></line>
-                <line x1="8" y1="13" x2="16" y2="21"></line>
-              </svg>
-              Eksportuj do Excela
-            </button>
-          </div>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14,2 14,8 20,8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="21"></line>
+              <line x1="8" y1="13" x2="16" y2="21"></line>
+            </svg>
+            Eksportuj do Excela
+          </button>
         </div>
 
         {/* Search Box */}

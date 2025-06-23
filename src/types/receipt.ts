@@ -1,12 +1,14 @@
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 export interface ReceiptItem {
+  productId: string;
   itemName: string;
   itemCode: string;
   quantity: number;
   unit: string;
   sell_price: number;
   buy_price: number;
+  weightAdjustment: number;
   total_price: number;
 }
 
@@ -32,25 +34,14 @@ export interface Client {
   searchableText?: string;
 }
 
-export interface CompanyDetails {
-  companyName: string;
-  numberNIP: string;
-  numberREGON: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  email: string;
-  phoneNumber: string;
-}
-
 export interface ExcelRowData {
   'Numer kwitu': string;
-  'Data': string;
-  'Klient': string;
+  Data: string;
+  Klient: string;
   'Nazwa towaru': string;
   'Kod towaru': string;
-  'Ilość': number;
-  'Jednostka': string;
+  Ilość: number;
+  Jednostka: string;
   'Cena zakupu': number;
   'Wartość pozycji': number;
 }
@@ -80,4 +71,29 @@ export interface Category {
 
 export interface PageSnapshots {
   [page: number]: QueryDocumentSnapshot<DocumentData> | null;
-} 
+}
+
+export interface ValidationErrors {
+  client: string;
+  items: string;
+  date: string;
+}
+
+export interface ReceiptFormData {
+  receiptNumber: string;
+  date: string;
+  selectedClient: Client | null;
+  items: ReceiptItem[];
+  totalAmount: number;
+}
+
+export interface CompanyDetails {
+  companyName: string;
+  numberNIP: string;
+  numberREGON: string;
+  address: string;
+  postalCode: string;
+  city: string;
+  email: string;
+  phoneNumber: string;
+}
