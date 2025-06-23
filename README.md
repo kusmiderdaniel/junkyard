@@ -15,28 +15,33 @@ A Progressive Web Application for managing receipts, clients, products, and busi
 ## Quick Start
 
 ### Prerequisites
+
 - Node.js 16+ and npm
 - Firebase project setup
 
 ### Installation
 
 1. Clone and install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Configure Firebase:
+
 ```bash
 cp env.example .env
 # Edit .env with your Firebase configuration
 ```
 
 3. Start the development server:
+
 ```bash
 npm start
 ```
 
 4. Build for production:
+
 ```bash
 npm run build
 ```
@@ -44,6 +49,7 @@ npm run build
 ## Environment Variables
 
 Required environment variables (see `env.example`):
+
 - `REACT_APP_FIREBASE_API_KEY`
 - `REACT_APP_FIREBASE_AUTH_DOMAIN`
 - `REACT_APP_FIREBASE_PROJECT_ID`
@@ -80,3 +86,4 @@ firebase deploy
 ## License
 
 Private project
+test

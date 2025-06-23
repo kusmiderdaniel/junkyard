@@ -1,6 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, limit, startAfter, DocumentData, QueryDocumentSnapshot, getCountFromServer, orderBy, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  query,
+  limit,
+  startAfter,
+  DocumentData,
+  QueryDocumentSnapshot,
+  getCountFromServer,
+  orderBy,
+  where,
+  doc,
+  updateDoc,
+  deleteDoc,
+} from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -34,20 +48,28 @@ const Clients: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [pageSnapshots, setPageSnapshots] = useState<{ [page: number]: QueryDocumentSnapshot<DocumentData> | null }>({ 1: null });
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [pageSnapshots, setPageSnapshots] = useState<{
+    [page: number]: QueryDocumentSnapshot<DocumentData> | null;
+  }>({ 1: null });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearchTerm, setActiveSearchTerm] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [receiptCounts, setReceiptCounts] = useState<{ [clientId: string]: number }>({});
+  const [receiptCounts, setReceiptCounts] = useState<{
+    [clientId: string]: number;
+  }>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const fetchReceiptCounts = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       // Get all receipts for the user
       const receiptsQuery = query(
@@ -55,7 +77,7 @@ const Clients: React.FC = () => {
         where('userID', '==', user.uid)
       );
       const receiptsSnapshot = await getDocs(receiptsQuery);
-      
+
       // Count receipts per client
       const counts: { [clientId: string]: number } = {};
       receiptsSnapshot.docs.forEach(doc => {
@@ -65,54 +87,66 @@ const Clients: React.FC = () => {
           counts[clientId] = (counts[clientId] || 0) + 1;
         }
       });
-      
+
       setReceiptCounts(counts);
-          } catch (error) {
-        // Receipt counts will default to 0 if fetch fails
-      }
+    } catch (error) {
+      // Receipt counts will default to 0 if fetch fails
+    }
   }, [user]);
 
   const fetchClients = useCallback(async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       // If offline, use cached data
       if (isOffline) {
         const cachedClients = offlineStorage.getCachedClients();
-        
+
         let allClients = cachedClients;
-        
+
         // Apply search filter if active
         if (activeSearchTerm) {
           const normalizedSearchTerm = normalizePolishText(activeSearchTerm);
-          
+
           allClients = cachedClients.filter(client => {
             // Use searchableText if available, otherwise create it from individual fields
-            const searchableText = client.searchableText || createSearchableText([
-              client.name, 
-              client.address, 
-              client.documentNumber,
-              client.postalCode || '',
-              client.city || '',
-              client.fullAddress || ''
-            ]);
-            
+            const searchableText =
+              client.searchableText ||
+              createSearchableText([
+                client.name,
+                client.address,
+                client.documentNumber,
+                client.postalCode || '',
+                client.city || '',
+                client.fullAddress || '',
+              ]);
+
             // Also check individual normalized fields for better compatibility
             const normalizedClientName = normalizePolishText(client.name);
-            const normalizedClientAddress = normalizePolishText(client.address || '');
-            const normalizedDocumentNumber = normalizePolishText(client.documentNumber || '');
-            const normalizedPostalCode = normalizePolishText(client.postalCode || '');
+            const normalizedClientAddress = normalizePolishText(
+              client.address || ''
+            );
+            const normalizedDocumentNumber = normalizePolishText(
+              client.documentNumber || ''
+            );
+            const normalizedPostalCode = normalizePolishText(
+              client.postalCode || ''
+            );
             const normalizedCity = normalizePolishText(client.city || '');
-            const normalizedFullAddress = normalizePolishText(client.fullAddress || '');
-            
-            return searchableText.includes(normalizedSearchTerm) ||
-                   normalizedClientName.includes(normalizedSearchTerm) ||
-                   normalizedClientAddress.includes(normalizedSearchTerm) ||
-                   normalizedDocumentNumber.includes(normalizedSearchTerm) ||
-                   normalizedPostalCode.includes(normalizedSearchTerm) ||
-                   normalizedCity.includes(normalizedSearchTerm) ||
-                   normalizedFullAddress.includes(normalizedSearchTerm);
+            const normalizedFullAddress = normalizePolishText(
+              client.fullAddress || ''
+            );
+
+            return (
+              searchableText.includes(normalizedSearchTerm) ||
+              normalizedClientName.includes(normalizedSearchTerm) ||
+              normalizedClientAddress.includes(normalizedSearchTerm) ||
+              normalizedDocumentNumber.includes(normalizedSearchTerm) ||
+              normalizedPostalCode.includes(normalizedSearchTerm) ||
+              normalizedCity.includes(normalizedSearchTerm) ||
+              normalizedFullAddress.includes(normalizedSearchTerm)
+            );
           });
         }
 
@@ -124,58 +158,70 @@ const Clients: React.FC = () => {
         const start = (currentPage - 1) * itemsPerPage;
         const paginated = allClients.slice(start, start + itemsPerPage);
         setClients(paginated);
-        
-        console.log('📱 Loaded clients from cache (offline mode)');
         return;
       }
 
       // Online mode - fetch from Firebase
       const clientsCollection = collection(db, 'clients');
-      
+
       if (activeSearchTerm) {
         // Optimized search: try server-side filtering first, fallback to client-side
         const normalizedSearchTerm = normalizePolishText(activeSearchTerm);
-        
+
         try {
           // For search, fetch all user's clients and filter client-side to support "contains" search
           const allClientsQuery = query(
             clientsCollection,
             where('userID', '==', user.uid)
           );
-          
+
           const allClientsSnapshot = await getDocs(allClientsQuery);
-          const allClients = allClientsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Client));
-          
+          const allClients = allClientsSnapshot.docs.map(
+            doc => ({ ...doc.data(), id: doc.id }) as Client
+          );
+
           // Cache the clients for offline use
           offlineStorage.cacheClients(allClients);
-          
+
           // Filter clients that contain the search term anywhere in their searchable fields
           const filteredClients = allClients.filter(client => {
             // Use searchableText if available, otherwise create it from individual fields
-            const searchableText = client.searchableText || createSearchableText([
-              client.name, 
-              client.address, 
-              client.documentNumber,
-              client.postalCode || '',
-              client.city || '',
-              client.fullAddress || ''
-            ]);
-            
+            const searchableText =
+              client.searchableText ||
+              createSearchableText([
+                client.name,
+                client.address,
+                client.documentNumber,
+                client.postalCode || '',
+                client.city || '',
+                client.fullAddress || '',
+              ]);
+
             // Also check individual normalized fields for better compatibility
             const normalizedClientName = normalizePolishText(client.name);
-            const normalizedClientAddress = normalizePolishText(client.address || '');
-            const normalizedDocumentNumber = normalizePolishText(client.documentNumber || '');
-            const normalizedPostalCode = normalizePolishText(client.postalCode || '');
+            const normalizedClientAddress = normalizePolishText(
+              client.address || ''
+            );
+            const normalizedDocumentNumber = normalizePolishText(
+              client.documentNumber || ''
+            );
+            const normalizedPostalCode = normalizePolishText(
+              client.postalCode || ''
+            );
             const normalizedCity = normalizePolishText(client.city || '');
-            const normalizedFullAddress = normalizePolishText(client.fullAddress || '');
-            
-            return searchableText.includes(normalizedSearchTerm) ||
-                   normalizedClientName.includes(normalizedSearchTerm) ||
-                   normalizedClientAddress.includes(normalizedSearchTerm) ||
-                   normalizedDocumentNumber.includes(normalizedSearchTerm) ||
-                   normalizedPostalCode.includes(normalizedSearchTerm) ||
-                   normalizedCity.includes(normalizedSearchTerm) ||
-                   normalizedFullAddress.includes(normalizedSearchTerm);
+            const normalizedFullAddress = normalizePolishText(
+              client.fullAddress || ''
+            );
+
+            return (
+              searchableText.includes(normalizedSearchTerm) ||
+              normalizedClientName.includes(normalizedSearchTerm) ||
+              normalizedClientAddress.includes(normalizedSearchTerm) ||
+              normalizedDocumentNumber.includes(normalizedSearchTerm) ||
+              normalizedPostalCode.includes(normalizedSearchTerm) ||
+              normalizedCity.includes(normalizedSearchTerm) ||
+              normalizedFullAddress.includes(normalizedSearchTerm)
+            );
           });
 
           // Sort by name for consistent results
@@ -185,38 +231,52 @@ const Clients: React.FC = () => {
           const start = (currentPage - 1) * itemsPerPage;
           const paginated = filteredClients.slice(start, start + itemsPerPage);
           setClients(paginated);
-
         } catch (searchError) {
           // Fallback to client-side filtering if server-side search fails
           if (process.env.NODE_ENV === 'development') {
-            console.warn('Server-side search failed, falling back to client-side filtering:', searchError);
+            console.warn(
+              'Server-side search failed, falling back to client-side filtering:',
+              searchError
+            );
           }
-          
+
           const allClientsQuery = query(
-            clientsCollection, 
+            clientsCollection,
             where('userID', '==', user.uid),
             orderBy('name_lowercase')
           );
           const querySnapshot = await getDocs(allClientsQuery);
-          const allClients = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Client));
+          const allClients = querySnapshot.docs.map(
+            doc => ({ ...doc.data(), id: doc.id }) as Client
+          );
 
           // Cache the clients for offline use
           offlineStorage.cacheClients(allClients);
 
           const filteredClients = allClients.filter(client => {
             const normalizedClientName = normalizePolishText(client.name);
-            const normalizedClientAddress = normalizePolishText(client.address || '');
-            const normalizedDocumentNumber = normalizePolishText(client.documentNumber || '');
-            const normalizedPostalCode = normalizePolishText(client.postalCode || '');
+            const normalizedClientAddress = normalizePolishText(
+              client.address || ''
+            );
+            const normalizedDocumentNumber = normalizePolishText(
+              client.documentNumber || ''
+            );
+            const normalizedPostalCode = normalizePolishText(
+              client.postalCode || ''
+            );
             const normalizedCity = normalizePolishText(client.city || '');
-            const normalizedFullAddress = normalizePolishText(client.fullAddress || '');
-            
-            return normalizedClientName.includes(normalizedSearchTerm) ||
-                   normalizedClientAddress.includes(normalizedSearchTerm) ||
-                   normalizedDocumentNumber.includes(normalizedSearchTerm) ||
-                   normalizedPostalCode.includes(normalizedSearchTerm) ||
-                   normalizedCity.includes(normalizedSearchTerm) ||
-                   normalizedFullAddress.includes(normalizedSearchTerm);
+            const normalizedFullAddress = normalizePolishText(
+              client.fullAddress || ''
+            );
+
+            return (
+              normalizedClientName.includes(normalizedSearchTerm) ||
+              normalizedClientAddress.includes(normalizedSearchTerm) ||
+              normalizedDocumentNumber.includes(normalizedSearchTerm) ||
+              normalizedPostalCode.includes(normalizedSearchTerm) ||
+              normalizedCity.includes(normalizedSearchTerm) ||
+              normalizedFullAddress.includes(normalizedSearchTerm)
+            );
           });
 
           setTotalPages(Math.ceil(filteredClients.length / itemsPerPage));
@@ -224,11 +284,10 @@ const Clients: React.FC = () => {
           const paginated = filteredClients.slice(start, start + itemsPerPage);
           setClients(paginated);
         }
-
       } else {
         // Default: server-side pagination
         const baseQuery = query(
-          clientsCollection, 
+          clientsCollection,
           where('userID', '==', user.uid),
           orderBy('name')
         );
@@ -240,21 +299,28 @@ const Clients: React.FC = () => {
         let clientsQuery = query(baseQuery, limit(itemsPerPage));
 
         if (currentPage > 1 && pageSnapshots[currentPage]) {
-          clientsQuery = query(baseQuery, startAfter(pageSnapshots[currentPage]), limit(itemsPerPage));
+          clientsQuery = query(
+            baseQuery,
+            startAfter(pageSnapshots[currentPage]),
+            limit(itemsPerPage)
+          );
         }
-        
+
         const documentSnapshots = await getDocs(clientsQuery);
-        const clientsData = documentSnapshots.docs.map(doc => ({ ...doc.data(), id: doc.id } as Client));
-        
+        const clientsData = documentSnapshots.docs.map(
+          doc => ({ ...doc.data(), id: doc.id }) as Client
+        );
+
         // Cache the clients for offline use
         offlineStorage.cacheClients(clientsData);
-        
-        const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+
+        const lastDoc =
+          documentSnapshots.docs[documentSnapshots.docs.length - 1];
         setLastVisible(lastDoc || null);
-        
+
         setClients(clientsData);
       }
-      
+
       // Fetch receipt counts for all clients (skip when offline)
       if (!isOffline) {
         await fetchReceiptCounts();
@@ -267,7 +333,9 @@ const Clients: React.FC = () => {
         if (cachedClients.length > 0) {
           setClients(cachedClients.slice(0, itemsPerPage));
           setTotalPages(Math.ceil(cachedClients.length / itemsPerPage));
-          toast.error('Błąd połączenia z serwerem. Wyświetlane są dane z cache.');
+          toast.error(
+            'Błąd połączenia z serwerem. Wyświetlane są dane z cache.'
+          );
         } else {
           setClients([]);
         }
@@ -277,7 +345,15 @@ const Clients: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, pageSnapshots, activeSearchTerm, user, fetchReceiptCounts, isOffline]);
+  }, [
+    currentPage,
+    itemsPerPage,
+    pageSnapshots,
+    activeSearchTerm,
+    user,
+    fetchReceiptCounts,
+    isOffline,
+  ]);
 
   useEffect(() => {
     fetchClients();
@@ -308,7 +384,9 @@ const Clients: React.FC = () => {
     }
   };
 
-  const handleItemsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleItemsPerPageChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
     if (!user) return;
     setItemsPerPage(Number(event.target.value));
     setCurrentPage(1);
@@ -319,7 +397,7 @@ const Clients: React.FC = () => {
     if (!user) return;
     setCurrentPage(1);
     setPageSnapshots({ 1: null });
-    if(activeSearchTerm){
+    if (activeSearchTerm) {
       setActiveSearchTerm('');
       setSearchTerm('');
     }
@@ -338,9 +416,15 @@ const Clients: React.FC = () => {
     try {
       // Create fullAddress field
       const addressParts = [];
-      if (updatedClient.address.trim()) addressParts.push(updatedClient.address.trim());
-      if ((updatedClient.postalCode?.trim()) || (updatedClient.city?.trim())) {
-        const locationPart = [updatedClient.postalCode?.trim(), updatedClient.city?.trim()].filter(Boolean).join(' ');
+      if (updatedClient.address.trim())
+        addressParts.push(updatedClient.address.trim());
+      if (updatedClient.postalCode?.trim() || updatedClient.city?.trim()) {
+        const locationPart = [
+          updatedClient.postalCode?.trim(),
+          updatedClient.city?.trim(),
+        ]
+          .filter(Boolean)
+          .join(' ');
         if (locationPart) addressParts.push(locationPart);
       }
       const fullAddress = addressParts.join(', ');
@@ -355,17 +439,21 @@ const Clients: React.FC = () => {
         name_lowercase: updatedClient.name.toLowerCase(),
         name_normalized: normalizePolishText(updatedClient.name),
         address_normalized: normalizePolishText(updatedClient.address),
-        documentNumber_normalized: normalizePolishText(updatedClient.documentNumber),
-        postalCode_normalized: normalizePolishText(updatedClient.postalCode || ''),
+        documentNumber_normalized: normalizePolishText(
+          updatedClient.documentNumber
+        ),
+        postalCode_normalized: normalizePolishText(
+          updatedClient.postalCode || ''
+        ),
         city_normalized: normalizePolishText(updatedClient.city || ''),
         fullAddress_normalized: normalizePolishText(fullAddress),
         searchableText: createSearchableText([
-          updatedClient.name, 
-          updatedClient.address, 
+          updatedClient.name,
+          updatedClient.address,
           updatedClient.documentNumber,
           updatedClient.postalCode || '',
           updatedClient.city || '',
-          fullAddress
+          fullAddress,
         ]),
       });
       setIsEditModalOpen(false);
@@ -379,7 +467,7 @@ const Clients: React.FC = () => {
 
   const handleDeleteClient = (clientId: string, clientName: string) => {
     if (!user) return;
-    
+
     setClientToDelete({ id: clientId, name: clientName });
     setIsDeleteModalOpen(true);
   };
@@ -463,8 +551,8 @@ const Clients: React.FC = () => {
           type="text"
           placeholder="Szukaj po nazwie, adresie lub numerze dokumentu..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          onChange={e => setSearchTerm(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
           disabled={!user}
           className="w-full md:w-1/3 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-l-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"
         />
@@ -492,20 +580,32 @@ const Clients: React.FC = () => {
           <table className="min-w-full bg-white">
             <thead className="bg-gray-800 text-white">
               <tr>
-                <th className="w-1/5 text-left py-3 px-4 uppercase font-semibold text-sm">Nazwa</th>
-                <th className="w-1/5 text-left py-3 px-4 uppercase font-semibold text-sm">Pełny Adres</th>
-                <th className="w-1/5 text-left py-3 px-4 uppercase font-semibold text-sm">Numer Dokumentu</th>
-                <th className="w-1/5 text-center py-3 px-4 uppercase font-semibold text-sm">Kwity</th>
-                <th className="w-1/5 text-center py-3 px-4 uppercase font-semibold text-sm">Akcje</th>
+                <th className="w-1/5 text-left py-3 px-4 uppercase font-semibold text-sm">
+                  Nazwisko i Imię
+                </th>
+                <th className="w-1/5 text-left py-3 px-4 uppercase font-semibold text-sm">
+                  Pełny Adres
+                </th>
+                <th className="w-1/5 text-left py-3 px-4 uppercase font-semibold text-sm">
+                  Numer Dokumentu
+                </th>
+                <th className="w-1/5 text-center py-3 px-4 uppercase font-semibold text-sm">
+                  Kwity
+                </th>
+                <th className="w-1/5 text-center py-3 px-4 uppercase font-semibold text-sm">
+                  Akcje
+                </th>
               </tr>
             </thead>
             <tbody className="text-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-4">Ładowanie...</td>
+                  <td colSpan={5} className="text-center py-4">
+                    Ładowanie...
+                  </td>
                 </tr>
               ) : (
-                clients.map((client) => (
+                clients.map(client => (
                   <tr key={client.id} className="border-b">
                     <td className="w-1/5 text-left py-3 px-4">
                       <button
@@ -515,8 +615,12 @@ const Clients: React.FC = () => {
                         {client.name}
                       </button>
                     </td>
-                    <td className="w-1/5 text-left py-3 px-4">{client.fullAddress || client.address}</td>
-                    <td className="w-1/5 text-left py-3 px-4">{client.documentNumber}</td>
+                    <td className="w-1/5 text-left py-3 px-4">
+                      {client.fullAddress || client.address}
+                    </td>
+                    <td className="w-1/5 text-left py-3 px-4">
+                      {client.documentNumber}
+                    </td>
                     <td className="w-1/5 text-center py-3 px-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {receiptCounts[client.id] || 0}
@@ -529,14 +633,14 @@ const Clients: React.FC = () => {
                           className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded-full hover:bg-blue-50"
                           aria-label="Edytuj klienta"
                         >
-                          <svg 
-                            width="20" 
-                            height="20" 
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
                             strokeLinejoin="round"
                           >
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -544,18 +648,20 @@ const Clients: React.FC = () => {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDeleteClient(client.id, client.name)}
+                          onClick={() =>
+                            handleDeleteClient(client.id, client.name)
+                          }
                           className="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-50"
                           aria-label="Usuń klienta"
                         >
-                          <svg 
-                            width="20" 
-                            height="20" 
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
                             strokeLinejoin="round"
                           >
                             <polyline points="3,6 5,6 21,6"></polyline>
@@ -571,7 +677,9 @@ const Clients: React.FC = () => {
               )}
               {clients.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={5} className="text-center py-4">Nie znaleziono klientów.</td>
+                  <td colSpan={5} className="text-center py-4">
+                    Nie znaleziono klientów.
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -598,7 +706,7 @@ const Clients: React.FC = () => {
             documentNumber: editingClient.documentNumber,
             postalCode: editingClient.postalCode || '',
             city: editingClient.city || '',
-            fullAddress: editingClient.fullAddress || ''
+            fullAddress: editingClient.fullAddress || '',
           }}
         />
       )}
@@ -616,4 +724,4 @@ const Clients: React.FC = () => {
   );
 };
 
-export default Clients; 
+export default Clients;

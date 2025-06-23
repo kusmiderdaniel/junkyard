@@ -15,14 +15,18 @@ export const useOfflineStatus = (): OfflineStatus => {
       setIsOnline(true);
       if (wasOffline) {
         // App was offline and is now back online
-        console.log('App is back online');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('App is back online');
+        }
       }
     };
 
     const handleOffline = () => {
       setIsOnline(false);
       setWasOffline(true);
-      console.log('App is now offline');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('App is now offline');
+      }
     };
 
     window.addEventListener('online', handleOnline);
@@ -37,6 +41,6 @@ export const useOfflineStatus = (): OfflineStatus => {
   return {
     isOnline,
     isOffline: !isOnline,
-    wasOffline
+    wasOffline,
   };
-}; 
+};

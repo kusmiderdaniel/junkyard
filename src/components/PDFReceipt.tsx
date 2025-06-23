@@ -1,5 +1,13 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, pdf, Font } from '@react-pdf/renderer';
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  pdf,
+  Font,
+} from '@react-pdf/renderer';
 
 // Register Roboto font which has excellent Polish character support
 Font.register({
@@ -238,20 +246,26 @@ const styles = StyleSheet.create({
 });
 
 // PDF Document Component
-const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({ receipt, client, companyDetails }) => {
+const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({
+  receipt,
+  client,
+  companyDetails,
+}) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pl-PL', {
       style: 'currency',
       currency: 'PLN',
       minimumFractionDigits: 2,
-    }).format(amount).replace(/\s/g, ' ');
+    })
+      .format(amount)
+      .replace(/\s/g, ' ');
   };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('pl-PL', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -259,67 +273,84 @@ const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({ receipt, client, compan
   const createTableRows = () => {
     const rows = [];
     const maxRows = 15;
-    
+
     // Add actual items
     for (let i = 0; i < maxRows; i++) {
       const item = receipt.items[i];
-             rows.push(
-         <View key={i} style={styles.tableRow}>
-           <View style={[styles.tableCol, { width: '35%' }]}>
-             <Text style={styles.tableCell}>{item ? item.itemName : ''}</Text>
-           </View>
-           <View style={[styles.tableCol, { width: '15%' }]}>
-             <Text style={styles.tableCell}>{item ? item.itemCode : ''}</Text>
-           </View>
-           <View style={[styles.tableCol, { width: '12%' }]}>
-             <Text style={styles.tableCell}>{item ? `${item.quantity.toFixed(2)} kg` : ''}</Text>
-           </View>
-           <View style={[styles.tableCol, { width: '18%' }]}>
-             <Text style={styles.tableCellRight}>{item ? formatCurrency(item.sell_price) : ''}</Text>
-           </View>
-           <View style={[styles.tableCol, { width: '20%' }]}>
-             <Text style={styles.tableCellRight}>{item ? formatCurrency(item.total_price) : ''}</Text>
-           </View>
-         </View>
-       );
+      rows.push(
+        <View key={i} style={styles.tableRow}>
+          <View style={[styles.tableCol, { width: '35%' }]}>
+            <Text style={styles.tableCell}>{item ? item.itemName : ''}</Text>
+          </View>
+          <View style={[styles.tableCol, { width: '15%' }]}>
+            <Text style={styles.tableCell}>{item ? item.itemCode : ''}</Text>
+          </View>
+          <View style={[styles.tableCol, { width: '12%' }]}>
+            <Text style={styles.tableCell}>
+              {item ? `${item.quantity.toFixed(2)} kg` : ''}
+            </Text>
+          </View>
+          <View style={[styles.tableCol, { width: '18%' }]}>
+            <Text style={styles.tableCellRight}>
+              {item ? formatCurrency(item.buy_price) : ''}
+            </Text>
+          </View>
+          <View style={[styles.tableCol, { width: '20%' }]}>
+            <Text style={styles.tableCellRight}>
+              {item ? formatCurrency(item.total_price) : ''}
+            </Text>
+          </View>
+        </View>
+      );
     }
     return rows;
   };
 
   const renderHalf = () => (
     <View style={styles.half}>
-       {/* Company Details Section - Positioned in Red Box Area */}
-       <View style={styles.leftSection}>
-         <View style={styles.companyInfo}>
-           <Text style={styles.companyText}>{companyDetails.companyName || 'Demo Złom'}</Text>
-           <Text style={styles.companyText}>{companyDetails.address || '00-000 Demowo, Demowa 15'}</Text>
-           <Text style={styles.companyText}>NIP: {companyDetails.numberNIP || '000-000-00-00'}, REGON: {companyDetails.numberREGON || '000000000'}</Text>
-           <Text style={styles.companyText}>tel.: {companyDetails.phoneNumber || '000 000 000'}</Text>
-         </View>
-       </View>
+      {/* Company Details Section - Positioned in Red Box Area */}
+      <View style={styles.leftSection}>
+        <View style={styles.companyInfo}>
+          <Text style={styles.companyText}>
+            {companyDetails.companyName || 'Demo Złom'}
+          </Text>
+          <Text style={styles.companyText}>
+            {companyDetails.address || '00-000 Demowo, Demowa 15'}
+          </Text>
+          <Text style={styles.companyText}>
+            NIP: {companyDetails.numberNIP || '000-000-00-00'}, REGON:{' '}
+            {companyDetails.numberREGON || '000000000'}
+          </Text>
+          <Text style={styles.companyText}>
+            tel.: {companyDetails.phoneNumber || '000 000 000'}
+          </Text>
+        </View>
+      </View>
 
-       {/* Header Information - Below Company Details */}
-       <View style={styles.rightInfo}>
-         <Text style={styles.title}>FORMULARZ PRZYJĘCIA ODPADÓW METALI</Text>
-         <Text style={styles.receiptNumber}>KWIT NR: {receipt.number}</Text>
-         <Text style={styles.dateLocation}>{companyDetails.city || 'Demowo'}, dnia: {formatDate(receipt.date)}</Text>
-       </View>
+      {/* Header Information - Below Company Details */}
+      <View style={styles.rightInfo}>
+        <Text style={styles.title}>FORMULARZ PRZYJĘCIA ODPADÓW METALI</Text>
+        <Text style={styles.receiptNumber}>KWIT NR: {receipt.number}</Text>
+        <Text style={styles.dateLocation}>
+          {companyDetails.city || 'Demowo'}, dnia: {formatDate(receipt.date)}
+        </Text>
+      </View>
 
-       {/* Client Section */}
-       <View style={styles.clientSection}>
-         <Text style={styles.clientText}>
-           <Text style={styles.clientLabel}>SPRZEDAJĄCY: </Text>
-           {client.name}
-         </Text>
-         <Text style={styles.clientText}>
-           <Text style={styles.clientLabel}>ADRES: </Text>
-           {client.fullAddress || client.address}
-         </Text>
-         <Text style={styles.clientText}>
-           <Text style={styles.clientLabel}>NR DOKUMENTU: </Text>
-           {client.documentNumber}
-         </Text>
-       </View>
+      {/* Client Section */}
+      <View style={styles.clientSection}>
+        <Text style={styles.clientText}>
+          <Text style={styles.clientLabel}>SPRZEDAJĄCY: </Text>
+          {client.name}
+        </Text>
+        <Text style={styles.clientText}>
+          <Text style={styles.clientLabel}>ADRES: </Text>
+          {client.fullAddress || client.address}
+        </Text>
+        <Text style={styles.clientText}>
+          <Text style={styles.clientLabel}>NR DOKUMENTU: </Text>
+          {client.documentNumber}
+        </Text>
+      </View>
 
       {/* Table */}
       <View style={styles.table}>
@@ -347,10 +378,14 @@ const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({ receipt, client, compan
 
         {/* Summary Row */}
         <View style={styles.summaryRow}>
-          <View style={[styles.summaryCell, { width: '35%', borderRightWidth: 0 }]}>
+          <View
+            style={[styles.summaryCell, { width: '35%', borderRightWidth: 0 }]}
+          >
             <Text style={styles.summaryText}>DO WYPŁATY</Text>
           </View>
-          <View style={[styles.summaryCell, { width: '45%', borderRightWidth: 0 }]}>
+          <View
+            style={[styles.summaryCell, { width: '45%', borderRightWidth: 0 }]}
+          >
             <Text style={styles.summaryText}></Text>
           </View>
           <View style={[styles.summaryCell, { width: '20%' }]}>
@@ -361,31 +396,35 @@ const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({ receipt, client, compan
         </View>
       </View>
 
-            {/* Disclaimer */}
-       <View style={styles.disclaimer}>
-         <Text style={[styles.disclaimerText, { fontWeight: 'bold' }]}>
-           Kopia formularza przyjęcia odpadów metali będzie przechowywana w zamkniętym pomieszczeniu, a po 5 LATACH ulegnie 
-           zniszczeniu. Dane osobowe nie będą udostępnione osobom niepowolanym.
-         </Text>
-         <Text style={styles.disclaimerText}>
-           Sprzedający oświadcza, że przekazane złom metałowy, nie podchodzi z kradzieży i nie jest zajęty przez komornika. 
-           Sprzedający jest poinformowany o odpowiedzialności w przypadku składania fałszywego oświadczenia. Sprzedający wie, że cena skupu 
-           jest ceną umowną. Kwotę powyższą otrzymuję. Sprzedający oświadcza, że nie jest podatnikiem vat. Sprzedający zgadza się na 
-           przetwarzanie danych osobowych przez {companyDetails.companyName || 'Demo'}.
-         </Text>
-       </View>
+      {/* Disclaimer */}
+      <View style={styles.disclaimer}>
+        <Text style={[styles.disclaimerText, { fontWeight: 'bold' }]}>
+          Kopia formularza przyjęcia odpadów metali będzie przechowywana w
+          zamkniętym pomieszczeniu, a po 5 LATACH ulegnie zniszczeniu. Dane
+          osobowe nie będą udostępnione osobom niepowolanym.
+        </Text>
+        <Text style={styles.disclaimerText}>
+          Sprzedający oświadcza, że przekazane złom metałowy, nie podchodzi z
+          kradzieży i nie jest zajęty przez komornika. Sprzedający jest
+          poinformowany o odpowiedzialności w przypadku składania fałszywego
+          oświadczenia. Sprzedający wie, że cena skupu jest ceną umowną. Kwotę
+          powyższą otrzymuję. Sprzedający oświadcza, że nie jest podatnikiem
+          vat. Sprzedający zgadza się na przetwarzanie danych osobowych przez{' '}
+          {companyDetails.companyName || 'Demo'}.
+        </Text>
+      </View>
 
-       {/* Signatures */}
-       <View style={styles.signatures}>
-         <View style={styles.signatureBox}>
-           <Text style={styles.signatureLabel}>SPRZEDAJĄCY</Text>
-           <Text style={styles.signatureLine}></Text>
-         </View>
-         <View style={styles.signatureBox}>
-           <Text style={styles.signatureLabel}>KUPUJĄCY</Text>
-           <Text style={styles.signatureLine}></Text>
-         </View>
-       </View>
+      {/* Signatures */}
+      <View style={styles.signatures}>
+        <View style={styles.signatureBox}>
+          <Text style={styles.signatureLabel}>SPRZEDAJĄCY</Text>
+          <Text style={styles.signatureLine}></Text>
+        </View>
+        <View style={styles.signatureBox}>
+          <Text style={styles.signatureLabel}>KUPUJĄCY</Text>
+          <Text style={styles.signatureLine}></Text>
+        </View>
+      </View>
     </View>
   );
 
@@ -402,24 +441,44 @@ const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({ receipt, client, compan
 
 // Hook to generate and download PDF
 export const usePDFReceipt = () => {
-  const generatePDF = async (receipt: Receipt, client: Client, companyDetails: CompanyDetails) => {
-    const doc = <PDFReceiptDocument receipt={receipt} client={client} companyDetails={companyDetails} />;
+  const generatePDF = async (
+    receipt: Receipt,
+    client: Client,
+    companyDetails: CompanyDetails
+  ) => {
+    const doc = (
+      <PDFReceiptDocument
+        receipt={receipt}
+        client={client}
+        companyDetails={companyDetails}
+      />
+    );
     const asPdf = pdf(doc);
     const blob = await asPdf.toBlob();
-    
+
     // Use browser's native download functionality
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `rachunek-${receipt.number.replace(/\//g, '-')}.pdf`;
+    link.download = `kwit_${receipt.number}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
-  const viewPDF = async (receipt: Receipt, client: Client, companyDetails: CompanyDetails) => {
-    const doc = <PDFReceiptDocument receipt={receipt} client={client} companyDetails={companyDetails} />;
+  const viewPDF = async (
+    receipt: Receipt,
+    client: Client,
+    companyDetails: CompanyDetails
+  ) => {
+    const doc = (
+      <PDFReceiptDocument
+        receipt={receipt}
+        client={client}
+        companyDetails={companyDetails}
+      />
+    );
     const asPdf = pdf(doc);
     const blob = await asPdf.toBlob();
     const url = URL.createObjectURL(blob);
@@ -429,4 +488,4 @@ export const usePDFReceipt = () => {
   return { generatePDF, viewPDF };
 };
 
-export default PDFReceiptDocument; 
+export default PDFReceiptDocument;

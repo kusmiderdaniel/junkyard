@@ -78,7 +78,6 @@ export const useReceiptData = ({
         const cachedCompanyDetails = offlineStorage.getCachedCompanyDetails();
         if (cachedCompanyDetails) {
           setCompanyDetails(cachedCompanyDetails);
-          console.log('📱 Loaded company details from cache (offline mode)');
         } else {
           setCompanyDetails({
             companyName: 'Your Company',
@@ -162,7 +161,6 @@ export const useReceiptData = ({
       if (isOffline) {
         const cachedClients = offlineStorage.getCachedClients();
         setClients(cachedClients);
-        console.log('📱 Loaded clients from cache (offline mode)');
         return;
       }
 
@@ -217,7 +215,6 @@ export const useReceiptData = ({
           b.localeCompare(a)
         );
         setAvailableMonths(sortedMonths);
-        console.log('📱 Generated available months from cache (offline mode)');
         return;
       }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Product {
   id: string;
@@ -149,6 +149,11 @@ const ItemRow: React.FC<ItemRowProps> = ({
     setIsProductDropdownOpen(true);
     setSelectedIndex(-1);
   };
+
+  // Update local state when prop changes (for form resets)
+  useEffect(() => {
+    setProductSearchTerm(item.itemName);
+  }, [item.itemName]);
 
   return (
     <tr className={hasErrors ? 'bg-red-50' : ''}>

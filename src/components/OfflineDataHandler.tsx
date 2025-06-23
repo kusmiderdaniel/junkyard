@@ -89,7 +89,9 @@ const OfflineDataHandler: React.FC = () => {
         '✅ User data cached successfully for offline use (clients, receipts, company details, products, categories)'
       );
     } catch (error) {
-      console.warn('Failed to cache user data:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Failed to cache user data:', error);
+      }
     }
   }, [user, isOnline]);
 
