@@ -327,20 +327,102 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 Korekta Wagi
               </label>
               <div className="relative">
+                {/* Custom arrows on the left */}
+                <div className="absolute inset-y-0 left-0 pl-3 flex flex-col justify-center space-y-0.5 z-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentValue = newProduct.weightAdjustment || 1;
+                      const newValue = Math.min(9.99, currentValue + 0.01);
+                      setNewProduct({
+                        ...newProduct,
+                        weightAdjustment: Math.round(newValue * 100) / 100,
+                      });
+                    }}
+                    className="w-4 h-3 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 15l7-7 7 7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentValue = newProduct.weightAdjustment || 1;
+                      const newValue = Math.max(0.01, currentValue - 0.01);
+                      setNewProduct({
+                        ...newProduct,
+                        weightAdjustment: Math.round(newValue * 100) / 100,
+                      });
+                    }}
+                    className="w-4 h-3 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="1.00"
-                  value={newProduct.weightAdjustment || ''}
-                  onChange={e =>
-                    setNewProduct({
-                      ...newProduct,
-                      weightAdjustment: parseFloat(e.target.value) || 1,
-                    })
+                  type="text"
+                  placeholder="1,00"
+                  value={
+                    newProduct.weightAdjustment
+                      ? newProduct.weightAdjustment.toFixed(2).replace('.', ',')
+                      : '1,00'
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  onChange={e => {
+                    // Convert European format (comma) to dot format for parsing
+                    const normalizedValue = e.target.value.replace(',', '.');
+                    const numericValue = parseFloat(normalizedValue);
+
+                    if (!isNaN(numericValue) && numericValue >= 0) {
+                      setNewProduct({
+                        ...newProduct,
+                        weightAdjustment: Math.round(numericValue * 100) / 100,
+                      });
+                    } else if (e.target.value === '') {
+                      setNewProduct({
+                        ...newProduct,
+                        weightAdjustment: 1,
+                      });
+                    }
+                  }}
+                  onBlur={() => {
+                    // Ensure we always have a valid value
+                    if (
+                      !newProduct.weightAdjustment ||
+                      newProduct.weightAdjustment <= 0
+                    ) {
+                      setNewProduct({
+                        ...newProduct,
+                        weightAdjustment: 1,
+                      });
+                    }
+                  }}
+                  className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-center"
                 />
+
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <svg
                     className="w-4 h-4 text-gray-400"
@@ -358,7 +440,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                Domyślnie 1.00 (bez korekty). Użyj np. 0.95 dla 5% redukcji
+                Domyślnie 1,00 (bez korekty). Użyj np. 0,95 dla 5% redukcji
                 wagi.
               </p>
             </div>

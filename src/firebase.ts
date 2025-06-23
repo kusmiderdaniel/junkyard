@@ -1,7 +1,12 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+
+// Emulator imports (only needed when using emulators)
+// import { connectAuthEmulator } from 'firebase/auth';
+// import { connectFirestoreEmulator } from 'firebase/firestore';
+// import { connectStorageEmulator } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -45,7 +50,9 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Enable Firebase emulator in development
+// Enable Firebase emulator in development (TEMPORARILY DISABLED)
+// Uncomment the following block to use emulators
+/*
 if (
   process.env.NODE_ENV === 'development' &&
   process.env.REACT_APP_ENV === 'development'
@@ -62,6 +69,9 @@ if (
     }
   }
 }
+*/
+
+console.log('🔥 Using LIVE Firebase project:', firebaseConfig.projectId);
 
 // Utility function to verify user authentication
 export const getCurrentUserId = () => {
