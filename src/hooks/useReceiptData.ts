@@ -373,6 +373,8 @@ export const useReceiptData = ({
         const start = (currentPage - 1) * itemsPerPage;
         const paginated = filteredReceipts.slice(start, start + itemsPerPage);
         setReceipts(paginated);
+
+        console.log('📱 Loaded receipts from cache (offline mode)');
         return;
       }
 

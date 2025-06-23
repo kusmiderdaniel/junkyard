@@ -288,6 +288,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
           type="button"
           onClick={() => onRemoveItem(index)}
           disabled={!canRemove}
+          tabIndex={-1}
           className="text-red-400 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors p-1 rounded-full hover:bg-red-50 disabled:hover:bg-transparent"
           title={
             canRemove

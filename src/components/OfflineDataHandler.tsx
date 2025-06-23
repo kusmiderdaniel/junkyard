@@ -85,11 +85,9 @@ const OfflineDataHandler: React.FC = () => {
       })) as Category[];
       offlineStorage.cacheCategories(categories);
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          '✅ User data cached successfully for offline use (clients, receipts, company details, products, categories)'
-        );
-      }
+      console.log(
+        '✅ User data cached successfully for offline use (clients, receipts, company details, products, categories)'
+      );
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.warn('Failed to cache user data:', error);
