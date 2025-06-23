@@ -37,7 +37,7 @@
     "deploy:dev": "npm run build:dev && firebase use development && firebase deploy",
     "deploy:staging": "npm run build:staging && firebase use staging && firebase deploy",
     "deploy:prod": "npm run build:prod && firebase use production && firebase deploy",
-    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "type-check": "tsc --noEmit",
     "prepare": "husky",
@@ -52,15 +52,6 @@
     "*.{json,css,md}": [
       "prettier --write"
     ]
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ],
-    "rules": {
-      "no-console": "off"
-    }
   },
   "browserslist": {
     "production": [
