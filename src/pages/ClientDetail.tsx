@@ -293,55 +293,6 @@ const ClientDetail: React.FC = () => {
     }
   }, [user, clientId]);
 
-  // Temporary diagnostic function to check receipt data structure - remove after debugging
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const diagnosticDataCheck = useCallback(() => {
-    if (receipts.length === 0) {
-      console.log('🔍 No receipts to diagnose');
-      return;
-    }
-
-    console.log('🔧 DIAGNOSTIC: Checking receipt data structure...');
-
-    receipts.slice(0, 3).forEach((receipt, index) => {
-      console.log(`📄 Receipt ${index + 1} (${receipt.number}):`);
-      console.log('- Receipt object:', {
-        id: receipt.id,
-        number: receipt.number,
-        totalAmount: receipt.totalAmount,
-        itemsCount: receipt.items.length,
-      });
-
-      if (receipt.items && receipt.items.length > 0) {
-        console.log('- Items analysis:');
-        receipt.items.forEach((item, itemIndex) => {
-          console.log(`  Item ${itemIndex + 1}:`, {
-            itemName: item.itemName,
-            quantity: item.quantity,
-            buy_price: item.buy_price,
-            sell_price: item.sell_price,
-            total_price: item.total_price,
-            buy_price_type: typeof item.buy_price,
-            sell_price_type: typeof item.sell_price,
-            has_buy_price:
-              item.buy_price !== undefined && item.buy_price !== null,
-            has_sell_price:
-              item.sell_price !== undefined && item.sell_price !== null,
-            buy_price_is_zero: item.buy_price === 0,
-            sell_price_is_zero: item.sell_price === 0,
-          });
-        });
-      } else {
-        console.log('- No items found');
-      }
-      console.log('---');
-    });
-
-    console.log(
-      '🏁 Diagnostic complete. Check console above for data structure.'
-    );
-  }, [receipts]);
-
   useEffect(() => {
     fetchClient();
     fetchCompanyDetails();
