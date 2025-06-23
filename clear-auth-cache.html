@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Auth Cache</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #ff4444; color: white; border: none; padding: 15px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 10px 0; }
+        button:hover { background: #cc3333; }
+        .success { color: #22c55e; font-weight: bold; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Firebase Authentication Cache</h1>
+        
+        <div class="info">
+            <strong>Use this page to clear all authentication data if you're having login issues between Firebase environments.</strong>
+        </div>
+        
+        <h3>What this will clear:</h3>
+        <ul>
+            <li>Local Storage (Firebase Auth tokens)</li>
+            <li>Session Storage</li>
+            <li>IndexedDB (Firebase offline data)</li>
+            <li>Service Worker Cache</li>
+        </ul>
+        
+        <button onclick="clearAllAuthData()">🗑️ Clear All Authentication Data</button>
+        
+        <div id="result"></div>
+        
+        <div class="info">
+            <strong>After clearing:</strong><br>
+            1. Close this tab<br>
+            2. Restart your development server<br>
+            3. Open localhost:3000 in a new incognito/private window<br>
+            4. Try logging in with your development environment user
+        </div>
+    </div>
+
+    <script>
+        function clearAllAuthData() {
+            const result = document.getElementById('result');
+            result.innerHTML = '<div style="color: #666;">Clearing data...</div>';
+            
+            try {
+                // Clear localStorage
+                localStorage.clear();
+                
+                // Clear sessionStorage
+                sessionStorage.clear();
+                
+                // Clear IndexedDB
+                if ('databases' in indexedDB) {
+                    indexedDB.databases().then(databases => {
+                        databases.forEach(db => {
+                            if (db.name && (db.name.includes('firebase') || db.name.includes('firestore'))) {
+                                indexedDB.deleteDatabase(db.name);
+                            }
+                        });
+                    });
+                } else {
+                    // Fallback for older browsers
+                    ['firebase-heartbeat-database', 'firebase-installations-database', 'firebaseLocalStorageDb'].forEach(dbName => {
+                        indexedDB.deleteDatabase(dbName);
+                    });
+                }
+                
+                // Clear Service Worker cache
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                        registrations.forEach(registration => {
+                            registration.unregister();
+                        });
+                    });
+                }
+                
+                // Clear browser cache (if possible)
+                if ('caches' in window) {
+                    caches.keys().then(cacheNames => {
+                        cacheNames.forEach(cacheName => {
+                            caches.delete(cacheName);
+                        });
+                    });
+                }
+                
+                result.innerHTML = `
+                    <div class="success">
+                        ✅ Authentication data cleared successfully!<br><br>
+                        <strong>Next steps:</strong><br>
+                        1. Close this tab<br>
+                        2. Restart your development server (npm run start:dev)<br>
+                        3. Open localhost:3000 in a new incognito window<br>
+                        4. Try logging in with your development user
+                    </div>
+                `;
+                
+            } catch (error) {
+                result.innerHTML = `<div style="color: #ff4444;">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html> 

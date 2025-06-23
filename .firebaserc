@@ -1,8 +1,10 @@
 {
   "projects": {
-    "default": "junkyard-31ade",
+    "default": "junkyard-staging",
     "production": "junkyard-31ade",
     "staging": "junkyard-staging",
     "development": "junkyard-dev-9497a"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

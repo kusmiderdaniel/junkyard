@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
+import AuthDebug from './AuthDebug';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/dashboard');
@@ -24,10 +25,12 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
+        {/* Debug component - remove after fixing auth issues */}
+        <AuthDebug />
         <div className="text-center">
-          <img 
+          <img
             src={`${process.env.PUBLIC_URL}/icon-192x192.png`}
-            alt="ScrapYard Logo" 
+            alt="ScrapYard Logo"
             className="mx-auto h-20 w-20 object-contain rounded-lg shadow-lg"
           />
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
@@ -42,7 +45,10 @@ const Login: React.FC = () => {
               </div>
             )}
             <div className="space-y-2">
-              <label className="block text-gray-700 text-lg font-medium" htmlFor="email">
+              <label
+                className="block text-gray-700 text-lg font-medium"
+                htmlFor="email"
+              >
                 Email
               </label>
               <input
@@ -50,14 +56,17 @@ const Login: React.FC = () => {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 required
                 placeholder="Wprowadź swój email"
                 autoComplete="username"
               />
             </div>
             <div className="space-y-2">
-              <label className="block text-gray-700 text-lg font-medium" htmlFor="password">
+              <label
+                className="block text-gray-700 text-lg font-medium"
+                htmlFor="password"
+              >
                 Hasło
               </label>
               <input
@@ -65,7 +74,7 @@ const Login: React.FC = () => {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 required
                 placeholder="Wprowadź swoje hasło"
                 autoComplete="current-password"
@@ -84,4 +93,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login; 
+export default Login;
