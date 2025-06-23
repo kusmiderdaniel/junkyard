@@ -32,7 +32,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   newProduct,
   setNewProduct,
   categories,
-  isEditing
+  isEditing,
 }) => {
   const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -62,13 +62,14 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
   const handleCloseAttempt = () => {
     // Check if any data has changed from initial values
-    const hasChanges = newProduct.name.trim() !== initialProduct.name.trim() ||
-                      newProduct.itemCode.trim() !== initialProduct.itemCode.trim() ||
-                      newProduct.categoryId !== initialProduct.categoryId ||
-                      newProduct.buy_price !== initialProduct.buy_price ||
-                      newProduct.sell_price !== initialProduct.sell_price ||
-                      newProduct.weightAdjustment !== initialProduct.weightAdjustment;
-    
+    const hasChanges =
+      newProduct.name.trim() !== initialProduct.name.trim() ||
+      newProduct.itemCode.trim() !== initialProduct.itemCode.trim() ||
+      newProduct.categoryId !== initialProduct.categoryId ||
+      newProduct.buy_price !== initialProduct.buy_price ||
+      newProduct.sell_price !== initialProduct.sell_price ||
+      newProduct.weightAdjustment !== initialProduct.weightAdjustment;
+
     if (hasChanges) {
       setShowConfirmDialog(true);
     } else {
@@ -106,7 +107,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 transition-opacity duration-200"
       onClick={handleBackdropClick}
     >
@@ -115,17 +116,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-              <svg 
-                className="w-4 h-4 text-purple-600" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="w-4 h-4 text-purple-600"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                 />
               </svg>
             </div>
@@ -137,8 +138,18 @@ const ProductModal: React.FC<ProductModalProps> = ({
             onClick={handleCloseAttempt}
             className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1 rounded-full hover:bg-gray-100"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -156,13 +167,25 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   type="text"
                   placeholder="Wprowadź nazwę produktu"
                   value={newProduct.name}
-                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                  onChange={e =>
+                    setNewProduct({ ...newProduct, name: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                   required
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                    />
                   </svg>
                 </div>
               </div>
@@ -176,20 +199,32 @@ const ProductModal: React.FC<ProductModalProps> = ({
               <div className="relative">
                 <select
                   value={newProduct.categoryId}
-                  onChange={(e) => setNewProduct({ ...newProduct, categoryId: e.target.value })}
+                  onChange={e =>
+                    setNewProduct({ ...newProduct, categoryId: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
                   required
                 >
                   <option value="">Wybierz Kategorię</option>
-                  {categories.map((category) => (
+                  {categories.map(category => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
               </div>
@@ -205,13 +240,25 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   type="text"
                   placeholder="Wprowadź kod produktu"
                   value={newProduct.itemCode}
-                  onChange={(e) => setNewProduct({ ...newProduct, itemCode: e.target.value })}
+                  onChange={e =>
+                    setNewProduct({ ...newProduct, itemCode: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                   required
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                    />
                   </svg>
                 </div>
               </div>
@@ -231,8 +278,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     min="0"
                     placeholder="0.00"
                     value={newProduct.buy_price || ''}
-                    onChange={(e) => setNewProduct({ ...newProduct, buy_price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-right"
+                    onChange={e =>
+                      setNewProduct({
+                        ...newProduct,
+                        buy_price: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-right [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                     required
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -253,8 +305,13 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     min="0"
                     placeholder="0.00"
                     value={newProduct.sell_price || ''}
-                    onChange={(e) => setNewProduct({ ...newProduct, sell_price: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-right"
+                    onChange={e =>
+                      setNewProduct({
+                        ...newProduct,
+                        sell_price: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-right [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                     required
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -276,17 +333,33 @@ const ProductModal: React.FC<ProductModalProps> = ({
                   min="0"
                   placeholder="1.00"
                   value={newProduct.weightAdjustment || ''}
-                  onChange={(e) => setNewProduct({ ...newProduct, weightAdjustment: parseFloat(e.target.value) || 1 })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400"
+                  onChange={e =>
+                    setNewProduct({
+                      ...newProduct,
+                      weightAdjustment: parseFloat(e.target.value) || 1,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16l3-1m-3 1l-3-1" />
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16l3-1m-3 1l-3-1"
+                    />
                   </svg>
                 </div>
               </div>
               <p className="text-xs text-gray-500">
-                Domyślnie 1.00 (bez korekty). Użyj np. 0.95 dla 5% redukcji wagi.
+                Domyślnie 1.00 (bez korekty). Użyj np. 0.95 dla 5% redukcji
+                wagi.
               </p>
             </div>
           </form>
@@ -302,13 +375,23 @@ const ProductModal: React.FC<ProductModalProps> = ({
               disabled={loading}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
               <span>Usuń</span>
             </button>
           )}
-          
+
           {/* Right side buttons */}
           <div className="flex items-center space-x-3 ml-auto">
             <button
@@ -339,14 +422,27 @@ const ProductModal: React.FC<ProductModalProps> = ({
               <div className="p-6">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    <svg
+                      className="w-4 h-4 text-yellow-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Potwierdź zamknięcie</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Potwierdź zamknięcie
+                  </h3>
                 </div>
                 <p className="text-gray-600 mb-6">
-                  Masz niezapisane zmiany. Czy na pewno chcesz zamknąć formularz? Wszystkie zmiany zostaną utracone.
+                  Masz niezapisane zmiany. Czy na pewno chcesz zamknąć
+                  formularz? Wszystkie zmiany zostaną utracone.
                 </p>
                 <div className="flex justify-end space-x-3">
                   <button
@@ -374,15 +470,28 @@ const ProductModal: React.FC<ProductModalProps> = ({
               <div className="p-6">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    <svg
+                      className="w-4 h-4 text-red-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Usuń Produkt</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Usuń Produkt
+                  </h3>
                 </div>
                 <p className="text-gray-600 mb-6">
-                  Czy na pewno chcesz usunąć produkt "<strong>{newProduct.name}</strong>"? 
-                  Ta operacja jest nieodwracalna.
+                  Czy na pewno chcesz usunąć produkt "
+                  <strong>{newProduct.name}</strong>"? Ta operacja jest
+                  nieodwracalna.
                 </p>
                 <div className="flex justify-end space-x-3">
                   <button
@@ -412,4 +521,4 @@ const ProductModal: React.FC<ProductModalProps> = ({
   );
 };
 
-export default ProductModal; 
+export default ProductModal;
