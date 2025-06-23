@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import {
   collection,
   getDocs,
@@ -12,13 +12,15 @@ import {
 import toast from 'react-hot-toast';
 import { db } from '../../firebase';
 import { useReceiptForm } from '../../hooks/useReceiptForm';
-import ReceiptFormHeader from './ReceiptFormHeader';
+import ReceiptFormHeader, { ReceiptFormHeaderRef } from './ReceiptFormHeader';
 import ReceiptItemsList from './ReceiptItemsList';
 import ReceiptSummary from './ReceiptSummary';
 import ReceiptFormActions from './ReceiptFormActions';
 import LoadingSpinner from '../LoadingSpinner';
 
 const ReceiptFormContainer: React.FC = () => {
+  const receiptFormHeaderRef = useRef<ReceiptFormHeaderRef>(null);
+
   const {
     // State
     receiptNumber,
@@ -88,6 +90,14 @@ const ReceiptFormContainer: React.FC = () => {
 
   // Reset form for new receipt
   const resetFormForNewReceipt = useCallback(async () => {
+    // Blur any currently focused element to prevent focus conflicts
+    if (
+      document.activeElement &&
+      document.activeElement instanceof HTMLElement
+    ) {
+      document.activeElement.blur();
+    }
+
     setSelectedClient(null);
     initializeItems();
     setShowValidationErrors(false);
@@ -95,6 +105,18 @@ const ReceiptFormContainer: React.FC = () => {
     // Generate new receipt number for current date
     const newReceiptNumber = await generateReceiptNumber(date);
     setReceiptNumber(newReceiptNumber);
+
+    // Focus the client selector with multiple attempts to ensure it works
+    const focusClientSelector = () => {
+      receiptFormHeaderRef.current?.focusClientSelector();
+    };
+
+    // Try multiple timing strategies
+    setTimeout(focusClientSelector, 100);
+    setTimeout(focusClientSelector, 300);
+    setTimeout(() => {
+      requestAnimationFrame(focusClientSelector);
+    }, 500);
   }, [
     initializeItems,
     setShowValidationErrors,
@@ -271,6 +293,22 @@ const ReceiptFormContainer: React.FC = () => {
 
         // Reset form for new receipt
         await resetFormForNewReceipt();
+
+        // Additional focus handling after PDF is opened
+        // Listen for when the window regains focus and re-focus the client selector
+        const handleWindowFocus = () => {
+          setTimeout(() => {
+            receiptFormHeaderRef.current?.focusClientSelector();
+          }, 100);
+          window.removeEventListener('focus', handleWindowFocus);
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+
+        // Remove the listener after 5 seconds as a fallback
+        setTimeout(() => {
+          window.removeEventListener('focus', handleWindowFocus);
+        }, 5000);
       } catch (error) {
         toast.error('Nie udało się zapisać kwitu. Spróbuj ponownie.');
       } finally {
@@ -450,6 +488,7 @@ const ReceiptFormContainer: React.FC = () => {
 
       <div className="space-y-6">
         <ReceiptFormHeader
+          ref={receiptFormHeaderRef}
           receiptNumber={receiptNumber}
           date={date}
           selectedClient={selectedClient}
