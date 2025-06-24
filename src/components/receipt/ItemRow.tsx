@@ -69,6 +69,8 @@ const ItemRow: React.FC<ItemRowProps> = ({
     'down'
   );
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [buyPriceEdit, setBuyPriceEdit] = useState<string>('');
+  const [quantityEdit, setQuantityEdit] = useState<string>('');
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearchTerm.toLowerCase())
@@ -232,10 +234,25 @@ const ItemRow: React.FC<ItemRowProps> = ({
             type="number"
             step="0.01"
             min="0"
-            value={item.quantity || ''}
-            onChange={e =>
-              onQuantityChange(index, parseFloat(e.target.value) || 0)
+            value={
+              quantityEdit !== ''
+                ? quantityEdit
+                : item.quantity > 0
+                  ? item.quantity.toFixed(2)
+                  : ''
             }
+            onChange={e => {
+              setQuantityEdit(e.target.value);
+            }}
+            onBlur={e => {
+              const parsedValue = parseFloat(e.target.value) || 0;
+              onQuantityChange(index, parsedValue);
+              setQuantityEdit(''); // Clear edit state
+            }}
+            onFocus={() => {
+              // Initialize edit state with current value
+              setQuantityEdit(item.quantity ? item.quantity.toString() : '');
+            }}
             className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right ${
               hasErrors && !hasValidQuantity
                 ? 'border-red-300 focus:ring-red-500'
@@ -247,34 +264,48 @@ const ItemRow: React.FC<ItemRowProps> = ({
       </td>
 
       <td className="px-4 py-4">
-        <input
-          type="text"
-          value={item.buy_price > 0 ? formatCurrency(item.buy_price) : ''}
-          onChange={e => {
-            // Extract numeric value from formatted currency string
-            const numericValue = e.target.value
-              .replace(/[^\d,]/g, '')
-              .replace(',', '.');
-            const parsedValue = parseFloat(numericValue) || 0;
-            onBuyPriceChange(index, parsedValue);
-          }}
-          className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right text-sm ${
-            hasErrors && !hasValidBuyPrice
-              ? 'border-red-300 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-orange-600'
-          }`}
-          placeholder="0,00 zł"
-        />
+        <div className="flex items-center space-x-2">
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={
+              buyPriceEdit !== ''
+                ? buyPriceEdit
+                : item.buy_price > 0
+                  ? item.buy_price.toFixed(2)
+                  : ''
+            }
+            onChange={e => {
+              setBuyPriceEdit(e.target.value);
+            }}
+            onBlur={e => {
+              const parsedValue = parseFloat(e.target.value) || 0;
+              onBuyPriceChange(index, parsedValue);
+              setBuyPriceEdit(''); // Clear edit state
+            }}
+            onFocus={() => {
+              // Initialize edit state with current value
+              setBuyPriceEdit(item.buy_price ? item.buy_price.toString() : '');
+            }}
+            className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right ${
+              hasErrors && !hasValidBuyPrice
+                ? 'border-red-300 focus:ring-red-500'
+                : 'border-gray-300 focus:ring-orange-600'
+            }`}
+            placeholder="0.00"
+          />
+          <span className="text-xs text-gray-500">zł</span>
+        </div>
       </td>
 
       <td className="px-4 py-4">
-        <input
-          type="text"
-          value={formatCurrency(item.sell_price)}
-          readOnly
-          tabIndex={-1}
-          className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 text-right text-sm"
-        />
+        <div className="flex items-center space-x-2">
+          <div className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 text-right text-sm">
+            {item.sell_price.toFixed(2).replace('.', ',')}
+          </div>
+          <span className="text-xs text-gray-500">zł</span>
+        </div>
       </td>
 
       <td className="px-4 py-4 text-right">
