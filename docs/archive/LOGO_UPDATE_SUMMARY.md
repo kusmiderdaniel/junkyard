@@ -5,15 +5,18 @@
 ### 📁 **Files Updated**
 
 #### **Replaced with New Logo:**
+
 - ✅ `public/scrap_logo.png` - Main logo (1024x1024) - Used in sidebar and PWA manifest
 - ✅ `src/scrap_logo.png` - Source logo copy (1024x1024) - Used in components
 - ✅ `public/logo192.png` - PWA icon (192x192) - Generated from new logo
 - ✅ `public/logo512.png` - PWA icon (512x512) - Generated from new logo
 
 #### **Cleaned Up:**
+
 - ❌ `favicon.png` - Original file removed after copying to appropriate locations
 
 #### **Preserved (Legacy):**
+
 - 📝 `public/favicon.ico` - Kept existing ICO format for browser compatibility
 
 ### 🎯 **Usage Locations**
@@ -21,16 +24,19 @@
 The new logo is now consistently used in:
 
 1. **Sidebar Logo** (`src/components/MainLayout.tsx`)
+
    ```tsx
-   src="/scrap_logo.png"
+   src = '/scrap_logo.png';
    ```
 
 2. **PWA Manifest** (`public/manifest.json`)
+
    ```json
    "src": "scrap_logo.png"
    ```
 
 3. **HTML Favicon** (`public/index.html`)
+
    ```html
    <link rel="icon" href="%PUBLIC_URL%/scrap_logo.png" />
    <link rel="apple-touch-icon" href="%PUBLIC_URL%/scrap_logo.png" />
@@ -40,12 +46,12 @@ The new logo is now consistently used in:
 
 ### 📊 **File Specifications**
 
-| File | Size | Dimensions | Purpose |
-|------|------|------------|---------|
-| `scrap_logo.png` | 1024KB | 1024x1024 | Main logo, favicon |
-| `logo192.png` | 32KB | 192x192 | PWA small icon |
-| `logo512.png` | 238KB | 512x512 | PWA large icon |
-| `favicon.ico` | 4KB | Multi-size | Legacy browser support |
+| File             | Size   | Dimensions | Purpose                |
+| ---------------- | ------ | ---------- | ---------------------- |
+| `scrap_logo.png` | 1024KB | 1024x1024  | Main logo, favicon     |
+| `logo192.png`    | 32KB   | 192x192    | PWA small icon         |
+| `logo512.png`    | 238KB  | 512x512    | PWA large icon         |
+| `favicon.ico`    | 4KB    | Multi-size | Legacy browser support |
 
 ### ✅ **Quality Assurance**
 
@@ -74,4 +80,4 @@ The new logo is now consistently used in:
 
 ## ✅ **Ready for Production**
 
-The logo update is complete and the application maintains full functionality with consistent branding across all platforms and devices. 
+The logo update is complete and the application maintains full functionality with consistent branding across all platforms and devices.

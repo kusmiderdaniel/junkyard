@@ -85,9 +85,9 @@ const AuthDebug: React.FC = () => {
         <div className="text-xs text-gray-600">
           <strong>Expected for Development:</strong>
           <br />
-          Project ID should be: junkyard-dev-9497a
+          Project ID should be: {process.env.REACT_APP_FIREBASE_PROJECT_ID}
           <br />
-          Auth Domain should be: junkyard-dev-9497a.firebaseapp.com
+          Auth Domain should be: {process.env.REACT_APP_FIREBASE_AUTH_DOMAIN}
         </div>
       </div>
     </div>
