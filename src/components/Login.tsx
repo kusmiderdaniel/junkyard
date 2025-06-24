@@ -1,24 +1,30 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
+import { RateLimitedAuth } from '../utils/rateLimitedFirebase';
 import AuthDebug from './AuthDebug';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const rateLimitedAuth = new RateLimitedAuth(auth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await rateLimitedAuth.signInWithEmailAndPassword(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+      setError(err.message || 'Nie udało się zalogować');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,9 +88,10 @@ const Login: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full bg-orange-700 hover:bg-orange-800 text-white text-lg font-semibold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-offset-2"
+              disabled={loading}
+              className="w-full bg-orange-700 hover:bg-orange-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-lg font-semibold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-orange-600 focus:ring-offset-2"
             >
-              Zaloguj się
+              {loading ? 'Logowanie...' : 'Zaloguj się'}
             </button>
           </form>
         </div>

@@ -13,6 +13,7 @@ import {
   PendingReceipt,
 } from './offlineStorage';
 import { normalizePolishText, createSearchableText } from './textUtils';
+import rateLimiter from './rateLimiter';
 import toast from 'react-hot-toast';
 
 export interface SyncResult {
@@ -48,6 +49,21 @@ class SyncService {
         syncedOperations: 0,
         failedOperations: 0,
         errors: ['Sync already in progress'],
+      };
+    }
+
+    // Check rate limits for sync operation
+    const syncLimit = rateLimiter.checkLimit('sync:operation', userUID);
+    if (!syncLimit.allowed) {
+      const message =
+        syncLimit.message ||
+        'Zbyt wiele operacji synchronizacji. Spróbuj ponownie później.';
+      toast.error(message);
+      return {
+        success: false,
+        syncedOperations: 0,
+        failedOperations: 1,
+        errors: [message],
       };
     }
 

@@ -1,5 +1,10 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -7,6 +12,7 @@ import MainLayout from './components/MainLayout';
 import Login from './components/Login';
 import MigrationHandler from './components/MigrationHandler';
 import LoadingSpinner from './components/LoadingSpinner';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load pages for better performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -21,94 +27,157 @@ const OfflineData = React.lazy(() => import('./pages/OfflineData'));
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={
-              <MigrationHandler>
-                <MainLayout />
-              </MigrationHandler>
-            }>
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-              <Route path="/dashboard" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <Dashboard />
-                </Suspense>
-              } />
-              <Route path="/add-receipt" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AddReceipt />
-                </Suspense>
-              } />
-              <Route path="/edit-receipt/:id" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <AddReceipt />
-                </Suspense>
-              } />
-              <Route path="/receipts" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <Receipts />
-                </Suspense>
-              } />
-              <Route path="/clients" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <Clients />
-                </Suspense>
-              } />
-              <Route path="/clients/:clientId" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <ClientDetail />
-                </Suspense>
-              } />
-              <Route path="/products" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <Products />
-                </Suspense>
-              } />
-              <Route path="/statistics" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <Statistics />
-                </Suspense>
-              } />
-              <Route path="/settings" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <Settings />
-                </Suspense>
-              } />
-              <Route path="/offline-data" element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <OfflineData />
-                </Suspense>
-              } />
+    <ErrorBoundary context="Application Root">
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <ErrorBoundary context="Authentication">
+                  <Login />
+                </ErrorBoundary>
+              }
+            />
+            <Route element={<ProtectedRoute />}>
+              <Route
+                element={
+                  <ErrorBoundary context="Main Application">
+                    <MigrationHandler>
+                      <MainLayout />
+                    </MigrationHandler>
+                  </ErrorBoundary>
+                }
+              >
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ErrorBoundary context="Dashboard">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Dashboard />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/add-receipt"
+                  element={
+                    <ErrorBoundary context="Add Receipt">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <AddReceipt />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/edit-receipt/:id"
+                  element={
+                    <ErrorBoundary context="Edit Receipt">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <AddReceipt />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/receipts"
+                  element={
+                    <ErrorBoundary context="Receipts List">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Receipts />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/clients"
+                  element={
+                    <ErrorBoundary context="Clients List">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Clients />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/clients/:clientId"
+                  element={
+                    <ErrorBoundary context="Client Detail">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <ClientDetail />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/products"
+                  element={
+                    <ErrorBoundary context="Products">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Products />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/statistics"
+                  element={
+                    <ErrorBoundary context="Statistics">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Statistics />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ErrorBoundary context="Settings">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <Settings />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/offline-data"
+                  element={
+                    <ErrorBoundary context="Offline Data">
+                      <Suspense fallback={<LoadingSpinner />}>
+                        <OfflineData />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </Router>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
+          </Routes>
+        </Router>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
             style: {
-              background: '#10b981',
+              background: '#363636',
+              color: '#fff',
             },
-          },
-          error: {
-            duration: 5000,
-            style: {
-              background: '#ef4444',
+            success: {
+              duration: 3000,
+              style: {
+                background: '#10b981',
+              },
             },
-          },
-        }}
-      />
-    </AuthProvider>
+            error: {
+              duration: 5000,
+              style: {
+                background: '#ef4444',
+              },
+            },
+          }}
+        />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

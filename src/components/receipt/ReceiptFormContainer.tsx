@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import { db } from '../../firebase';
 import { useReceiptForm } from '../../hooks/useReceiptForm';
+import { useRateLimitedOperations } from '../../utils/rateLimitedFirebase';
 import ReceiptFormHeader, { ReceiptFormHeaderRef } from './ReceiptFormHeader';
 import ReceiptItemsList from './ReceiptItemsList';
 import ReceiptSummary from './ReceiptSummary';
@@ -20,6 +21,11 @@ import LoadingSpinner from '../LoadingSpinner';
 
 const ReceiptFormContainer: React.FC = () => {
   const receiptFormHeaderRef = useRef<ReceiptFormHeaderRef>(null);
+
+  // Rate limiting for operations
+  const rateLimitedOps = useRateLimitedOperations(
+    () => user?.uid || 'anonymous'
+  );
 
   const {
     // State
@@ -145,6 +151,18 @@ const ReceiptFormContainer: React.FC = () => {
       return;
     }
 
+    // Check rate limits
+    const rateLimit = isEditing
+      ? rateLimitedOps.checkReceiptUpdate()
+      : rateLimitedOps.checkReceiptCreate();
+
+    if (!rateLimit.allowed) {
+      toast.error(
+        rateLimit.message || 'Zbyt wiele operacji. Spróbuj ponownie później.'
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const localDate = new Date();
@@ -227,6 +245,26 @@ const ReceiptFormContainer: React.FC = () => {
 
       if (!companyDetails) {
         toast.error('Dane firmy nie zostały załadowane. Spróbuj ponownie.');
+        return;
+      }
+
+      // Check rate limits for receipt creation and PDF generation
+      const receiptLimit = rateLimitedOps.checkReceiptCreate();
+      const pdfLimit = rateLimitedOps.checkPDFGenerate();
+
+      if (!receiptLimit.allowed) {
+        toast.error(
+          receiptLimit.message ||
+            'Zbyt wiele tworzonych kwitów. Spróbuj ponownie później.'
+        );
+        return;
+      }
+
+      if (!pdfLimit.allowed) {
+        toast.error(
+          pdfLimit.message ||
+            'Zbyt wiele generowanych PDF. Spróbuj ponownie później.'
+        );
         return;
       }
 
@@ -334,6 +372,7 @@ const ReceiptFormContainer: React.FC = () => {
       setShowValidationErrors,
       setPrintingAndContinuing,
       setReceiptNumber,
+      rateLimitedOps,
     ]
   );
 

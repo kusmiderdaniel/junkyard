@@ -10,6 +10,7 @@ import {
   createSanitizedInputHandler,
   validateInputSafety,
 } from '../utils/inputSanitizer';
+import { useRateLimitedOperations } from '../utils/rateLimitedFirebase';
 import toast from 'react-hot-toast';
 
 type Client = {
@@ -37,6 +38,9 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
   const { user } = useAuth();
   const { isOffline } = useOfflineStatus();
   const { addOfflineClient } = useOfflineSync();
+  const rateLimitedOps = useRateLimitedOperations(
+    () => user?.uid || 'anonymous'
+  );
   const [name, setName] = useState(initialData?.name || '');
   const [address, setAddress] = useState(initialData?.address || '');
   const [documentNumber, setDocumentNumber] = useState(
@@ -129,6 +133,19 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       setError('Użytkownik nie jest uwierzytelniony.');
       return;
     }
+
+    // Check rate limits for client creation (only for new clients)
+    if (!initialData) {
+      const clientLimit = rateLimitedOps.checkClientCreate();
+      if (!clientLimit.allowed) {
+        setError(
+          clientLimit.message ||
+            'Zbyt wiele tworzonych klientów. Spróbuj ponownie później.'
+        );
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
 
