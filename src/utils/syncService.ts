@@ -15,18 +15,24 @@ import {
 import { normalizePolishText, createSearchableText } from './textUtils';
 import rateLimiter from './rateLimiter';
 import toast from 'react-hot-toast';
+import { idMappingService } from './idMappingService';
+import { cacheUpdateService } from './cacheUpdateService';
 
 export interface SyncResult {
   success: boolean;
   syncedOperations: number;
   failedOperations: number;
   errors: string[];
+  cacheUpdates?: {
+    updatedClients: number;
+    updatedReceipts: number;
+    removedTempEntries: number;
+  };
 }
 
 class SyncService {
   private isSyncing = false;
   private syncCallbacks: ((result: SyncResult) => void)[] = [];
-  private tempToRealIdMap: Map<string, string> = new Map(); // Track temp → real ID mappings
 
   // Register callback for sync completion
   onSyncComplete(callback: (result: SyncResult) => void): void {
@@ -68,7 +74,9 @@ class SyncService {
     }
 
     this.isSyncing = true;
-    this.tempToRealIdMap.clear(); // Clear previous mappings
+
+    // Clear previous mappings and prepare for new sync
+    idMappingService.clear();
 
     const pendingOperations = await offlineStorage.getPendingOperations();
 
@@ -94,6 +102,10 @@ class SyncService {
       (a, b) => a.timestamp - b.timestamp
     );
 
+    // Phase 1: Build dependency graph before syncing
+    this.buildDependencyGraph(sortedOperations);
+
+    // Phase 2: Sync operations
     for (const operation of sortedOperations) {
       try {
         await this.syncOperation(operation, userUID);
@@ -130,13 +142,37 @@ class SyncService {
       result.success = false;
     }
 
-    // CRITICAL FIX: Clean up any lingering temp entries after successful sync
+    // Phase 3: Apply cache updates using the decoupled services
     if (result.success && result.syncedOperations > 0) {
-      await this.cleanupTempEntries();
+      const cacheUpdateResult = await this.applyCacheUpdates();
+      result.cacheUpdates = {
+        updatedClients: cacheUpdateResult.updatedClients,
+        updatedReceipts: cacheUpdateResult.updatedReceipts,
+        removedTempEntries: cacheUpdateResult.removedTempEntries,
+      };
 
-      // Additional verification step - ensure cache consistency
-      await this.verifyCacheConsistency();
+      if (!cacheUpdateResult.success) {
+        result.errors.push(...cacheUpdateResult.errors);
+      }
+
+      // Verify cache consistency
+      const consistencyCheck =
+        await cacheUpdateService.verifyCacheConsistency();
+      if (!consistencyCheck.isConsistent) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            '⚠️ Cache consistency issues found:',
+            consistencyCheck.issues
+          );
+          if (consistencyCheck.fixed.length > 0) {
+            console.log('🔧 Auto-fixed issues:', consistencyCheck.fixed);
+          }
+        }
+      }
     }
+
+    // Clean up mapping service
+    idMappingService.clear();
 
     this.isSyncing = false;
     this.notifySyncComplete(result);
@@ -153,6 +189,47 @@ class SyncService {
     }
 
     return result;
+  }
+
+  /**
+   * Build dependency graph to track receipt-client relationships
+   */
+  private buildDependencyGraph(operations: PendingOperation[]): void {
+    for (const operation of operations) {
+      if (operation.type === 'CREATE_RECEIPT') {
+        const receiptData = operation.data as PendingReceipt;
+        if (receiptData.tempId && receiptData.clientId) {
+          idMappingService.addDependency(
+            receiptData.tempId,
+            receiptData.clientId
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Apply cache updates using the decoupled services
+   */
+  private async applyCacheUpdates() {
+    // Generate batch updates from ID mappings
+    const updates = idMappingService.generateCacheUpdates();
+
+    // Apply the updates
+    const updateResult =
+      await cacheUpdateService.applyIdMappingUpdates(updates);
+
+    // Clean up temporary entries
+    const cleanupResult = await cacheUpdateService.cleanupTempEntries();
+
+    // Combine results
+    return {
+      success: updateResult.success && cleanupResult.success,
+      updatedClients: updateResult.updatedClients,
+      updatedReceipts: updateResult.updatedReceipts,
+      removedTempEntries: cleanupResult.removedTempEntries,
+      errors: [...updateResult.errors, ...cleanupResult.errors],
+    };
   }
 
   private async syncOperation(
@@ -181,13 +258,14 @@ class SyncService {
     clientData: PendingClient,
     userUID: string
   ): Promise<void> {
-    // Remove temp fields
+    // Remove temp fields and resolve any temp IDs
     const { tempId, ...cleanClientData } = clientData;
+    const resolvedData = idMappingService.resolveIds(cleanClientData);
 
-    // Ensure userID is set
+    // Ensure userID is set consistently across all documents
     const clientToCreate = {
-      ...cleanClientData,
-      userID: userUID,
+      ...resolvedData,
+      userID: userUID, // [Ensures userID field is set for consistency across collections][[memory:1081839693935955108]]
     };
 
     // Add server-side fields
@@ -232,60 +310,46 @@ class SyncService {
     // Create in Firebase
     const docRef = await addDoc(collection(db, 'clients'), finalClientData);
 
-    // CRITICAL: Store the mapping for later receipt updates
-    this.tempToRealIdMap.set(tempId, docRef.id);
+    // Register the mapping for later use
+    idMappingService.addMapping(tempId, docRef.id, 'client');
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🗺️ Stored mapping: ${tempId} → ${docRef.id}`);
-    }
-
-    // Update local cache to replace temp client with real one
-    await this.updateCachedClientId(tempId, docRef.id, finalClientData);
+    // Replace temp entity in cache with real entity
+    await cacheUpdateService.replaceEntity(
+      tempId,
+      docRef.id,
+      { ...finalClientData, id: docRef.id },
+      'client'
+    );
   }
 
   private async syncCreateReceipt(
     receiptData: PendingReceipt,
     userUID: string
   ): Promise<void> {
-    // Remove temp fields
+    // Remove temp fields and resolve any temp IDs
     const { tempId, ...cleanReceiptData } = receiptData;
+    const resolvedData = idMappingService.resolveIds(cleanReceiptData);
 
-    // CRITICAL FIX: If receipt references a temp client ID, use the real ID from mapping
-    let updatedClientId = cleanReceiptData.clientId;
-    if (
-      cleanReceiptData.clientId &&
-      cleanReceiptData.clientId.startsWith('temp_client_')
-    ) {
-      const realClientId = this.tempToRealIdMap.get(cleanReceiptData.clientId);
-      if (realClientId) {
-        updatedClientId = realClientId;
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `🔗 Receipt ${tempId} clientId updated: ${cleanReceiptData.clientId} → ${realClientId}`
-          );
-        }
-      } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            `⚠️ No mapping found for temp client ID: ${cleanReceiptData.clientId}`
-          );
-        }
-      }
-    }
-
-    // Ensure userID is set and convert Date object to Firestore timestamp
+    // Ensure userID is set consistently across all documents
     const receiptToCreate = {
-      ...cleanReceiptData,
-      clientId: updatedClientId, // Use the updated client ID
-      userID: userUID,
-      date: new Date(cleanReceiptData.date), // Ensure it's a proper Date object
+      ...resolvedData,
+      userID: userUID, // [Ensures userID field is set for consistency across collections][[memory:1081839693935955108]]
+      date: new Date(resolvedData.date), // Ensure it's a proper Date object
     };
 
     // Create in Firebase
     const docRef = await addDoc(collection(db, 'receipts'), receiptToCreate);
 
-    // Update local cache to replace temp receipt with real one
-    await this.updateCachedReceiptId(tempId, docRef.id, receiptToCreate);
+    // Register the mapping
+    idMappingService.addMapping(tempId, docRef.id, 'receipt');
+
+    // Replace temp entity in cache with real entity
+    await cacheUpdateService.replaceEntity(
+      tempId,
+      docRef.id,
+      { ...receiptToCreate, id: docRef.id },
+      'receipt'
+    );
   }
 
   private async syncUpdateClient(
@@ -293,9 +357,11 @@ class SyncService {
     userUID: string
   ): Promise<void> {
     const { id, ...updateData } = clientData;
+    const resolvedData = idMappingService.resolveIds(updateData);
+
     await updateDoc(doc(db, 'clients', id), {
-      ...updateData,
-      userID: userUID,
+      ...resolvedData,
+      userID: userUID, // [Ensures userID field is set for consistency across collections][[memory:1081839693935955108]]
     });
   }
 
@@ -305,89 +371,8 @@ class SyncService {
   ): Promise<void> {
     await deleteDoc(doc(db, 'clients', clientId));
 
-    // Remove from local cache
-    const cachedClients = await offlineStorage.getCachedClients();
-    const filtered = cachedClients.filter(client => client.id !== clientId);
-    await offlineStorage.cacheClients(filtered);
-  }
-
-  private async updateCachedClientId(
-    tempId: string,
-    realId: string,
-    clientData: any
-  ): Promise<void> {
-    try {
-      // Get current cached data
-      const cachedClients = await offlineStorage.getCachedClients();
-      const cachedReceipts = await offlineStorage.getCachedReceipts();
-
-      // Find and update the client
-      const clientIndex = cachedClients.findIndex(
-        client => client.id === tempId
-      );
-      let clientUpdated = false;
-
-      if (clientIndex !== -1) {
-        cachedClients[clientIndex] = { ...clientData, id: realId };
-        clientUpdated = true;
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔄 Updated client cache: ${tempId} → ${realId}`);
-        }
-      }
-
-      // Find and update any receipts that reference this temp client ID
-      let receiptsUpdated = false;
-      for (let i = 0; i < cachedReceipts.length; i++) {
-        if (cachedReceipts[i].clientId === tempId) {
-          cachedReceipts[i].clientId = realId;
-          receiptsUpdated = true;
-
-          if (process.env.NODE_ENV === 'development') {
-            console.log(
-              `🔗 Updated receipt ${cachedReceipts[i].id} clientId: ${tempId} → ${realId}`
-            );
-          }
-        }
-      }
-
-      // Apply updates atomically
-      if (clientUpdated) {
-        await offlineStorage.cacheClients(cachedClients);
-      }
-
-      if (receiptsUpdated) {
-        await offlineStorage.cacheReceipts(cachedReceipts);
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to update cached client ID:', error);
-      }
-    }
-  }
-
-  private async updateCachedReceiptId(
-    tempId: string,
-    realId: string,
-    receiptData: any
-  ): Promise<void> {
-    try {
-      const cachedReceipts = await offlineStorage.getCachedReceipts();
-      const index = cachedReceipts.findIndex(receipt => receipt.id === tempId);
-
-      if (index !== -1) {
-        cachedReceipts[index] = { ...receiptData, id: realId };
-        await offlineStorage.cacheReceipts(cachedReceipts);
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🔄 Updated receipt cache: ${tempId} → ${realId}`);
-        }
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to update cached receipt ID:', error);
-      }
-    }
+    // Remove from cache using the decoupled service
+    await cacheUpdateService.removeEntity(clientId, 'client');
   }
 
   // Get sync status
@@ -407,119 +392,31 @@ class SyncService {
     return operations.length;
   }
 
-  // NEW: Clean up temporary entries that might still be in cache
-  private async cleanupTempEntries(): Promise<void> {
-    try {
-      // Clean up temp clients
-      const cachedClients = await offlineStorage.getCachedClients();
-      const cleanClients = cachedClients.filter(
-        client => !client.id.startsWith('temp_client_')
-      );
-      if (cleanClients.length !== cachedClients.length) {
-        await offlineStorage.cacheClients(cleanClients);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `🧹 Cleaned up ${cachedClients.length - cleanClients.length} temp clients`
-          );
-        }
-      }
+  // Debugging and monitoring methods
+  async getSyncStatistics() {
+    const pendingOpsCount = await this.getPendingOperationsCount();
+    const mappingStats = idMappingService.getStats();
 
-      // Clean up temp receipts
-      const cachedReceipts = await offlineStorage.getCachedReceipts();
-      const cleanReceipts = cachedReceipts.filter(
-        receipt => !receipt.id.startsWith('temp_receipt_')
-      );
-      if (cleanReceipts.length !== cachedReceipts.length) {
-        await offlineStorage.cacheReceipts(cleanReceipts);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            `🧹 Cleaned up ${cachedReceipts.length - cleanReceipts.length} temp receipts`
-          );
-        }
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Failed to cleanup temp entries:', error);
-      }
-    }
+    return {
+      isSyncing: this.isSyncing,
+      pendingOperations: pendingOpsCount,
+      idMappings: mappingStats,
+      timestamp: Date.now(),
+    };
   }
 
-  // NEW: Verify and fix cache consistency after sync
-  private async verifyCacheConsistency(): Promise<void> {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Verifying cache consistency...');
-      }
+  async validateSync(): Promise<{ isValid: boolean; issues: string[] }> {
+    const mappingValidation = idMappingService.validateMappings();
+    const cacheConsistency = await cacheUpdateService.verifyCacheConsistency();
 
-      const cachedClients = await offlineStorage.getCachedClients();
-      const cachedReceipts = await offlineStorage.getCachedReceipts();
-
-      // Check for orphaned receipts (receipts with invalid client IDs)
-      const validClientIds = new Set(cachedClients.map(c => c.id));
-      let orphanedReceipts = 0;
-      let fixedReceipts = 0;
-
-      for (let i = 0; i < cachedReceipts.length; i++) {
-        const receipt = cachedReceipts[i];
-
-        // If receipt references a temp client ID that doesn't exist, try to fix it
-        if (
-          receipt.clientId.startsWith('temp_client_') &&
-          !validClientIds.has(receipt.clientId)
-        ) {
-          orphanedReceipts++;
-
-          // Try to find the real client ID using our mapping
-          const realClientId = this.tempToRealIdMap.get(receipt.clientId);
-          if (realClientId && validClientIds.has(realClientId)) {
-            // Fix the orphaned receipt
-            cachedReceipts[i].clientId = realClientId;
-            fixedReceipts++;
-
-            if (process.env.NODE_ENV === 'development') {
-              console.log(
-                `🔧 Fixed orphaned receipt ${receipt.id}: ${receipt.clientId} → ${realClientId}`
-              );
-            }
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn(
-                `⚠️ Cannot fix orphaned receipt ${receipt.id} with clientId: ${receipt.clientId}`
-              );
-            }
-          }
-        }
-      }
-
-      if (orphanedReceipts > 0) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            `⚠️ Found ${orphanedReceipts} orphaned receipts, fixed ${fixedReceipts}`
-          );
-        }
-
-        // Save the fixed receipts back to cache
-        if (fixedReceipts > 0) {
-          await offlineStorage.cacheReceipts(cachedReceipts);
-        }
-      }
-
-      // Force a fresh deduplication to clean up any remaining issues
-      await offlineStorage.cacheClients(cachedClients);
-      await offlineStorage.cacheReceipts(cachedReceipts);
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          `✅ Cache consistency verification completed - Fixed ${fixedReceipts} orphaned receipts`
-        );
-      }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to verify cache consistency:', error);
-      }
-    }
+    return {
+      isValid: mappingValidation.isValid && cacheConsistency.isConsistent,
+      issues: [...mappingValidation.errors, ...cacheConsistency.issues],
+    };
   }
 }
 
 // Export singleton instance
-export const syncService = new SyncService();
+const syncService = new SyncService();
+export { syncService };
+export default syncService;

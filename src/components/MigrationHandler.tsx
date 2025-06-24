@@ -4,7 +4,7 @@ import {
   checkMigrationNeeded,
   migrateClientSearchFields,
 } from '../utils/dataMigration';
-import { migrateUnencryptedData } from '../utils/encryption';
+// Encryption utility will be lazy loaded
 import LoadingSpinner from './LoadingSpinner';
 
 interface MigrationHandlerProps {
@@ -95,17 +95,25 @@ const MigrationHandler: React.FC<MigrationHandlerProps> = ({ children }) => {
           await migrateClientSearchFields(user.uid);
           localStorage.setItem(migrationKey, 'true');
         } catch (error) {
-          console.error('Migration failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Migration failed:', error);
+          }
         }
       }
 
       // Run encryption migration
       if (!hasEncrypted) {
         try {
+          // Lazy load encryption utility
+          const { migrateUnencryptedData } = await import(
+            '../utils/encryption'
+          );
           await migrateUnencryptedData(user.uid);
           localStorage.setItem(encryptionKey, 'true');
         } catch (error) {
-          console.error('Encryption migration failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('Encryption migration failed:', error);
+          }
         }
       }
 

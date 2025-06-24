@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
   collection,
   getDocs,
@@ -75,8 +75,13 @@ const ReceiptFormContainer: React.FC = () => {
     generateReceiptNumber,
   } = useReceiptForm();
 
-  // Initialize component
+  // Store initialization status to prevent re-runs
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize component only once
   useEffect(() => {
+    if (isInitialized) return;
+
     const initializeComponent = async () => {
       try {
         await fetchData();
@@ -86,6 +91,7 @@ const ReceiptFormContainer: React.FC = () => {
         } else {
           initializeItems();
         }
+        setIsInitialized(true);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           console.error('Error initializing component:', error);
@@ -94,7 +100,7 @@ const ReceiptFormContainer: React.FC = () => {
     };
 
     initializeComponent();
-  }, [fetchData, loadReceiptData, initializeItems, isEditing]);
+  }, [fetchData, loadReceiptData, initializeItems, isEditing, isInitialized]);
 
   // Reset form for new receipt
   const resetFormForNewReceipt = useCallback(async () => {

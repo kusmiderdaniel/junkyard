@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -13,6 +13,11 @@ import Login from './components/Login';
 import MigrationHandler from './components/MigrationHandler';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
+import {
+  preloadCriticalChunks,
+  logBundleMetrics,
+  optimizeResourceLoading,
+} from './utils/bundleOptimizations';
 
 // Lazy load pages for better performance
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -26,6 +31,18 @@ const Settings = React.lazy(() => import('./pages/Settings'));
 const OfflineData = React.lazy(() => import('./pages/OfflineData'));
 
 function App() {
+  // Initialize bundle optimizations
+  useEffect(() => {
+    // Optimize resource loading
+    optimizeResourceLoading();
+
+    // Preload critical chunks when browser is idle
+    preloadCriticalChunks();
+
+    // Log performance metrics in development
+    logBundleMetrics();
+  }, []);
+
   return (
     <ErrorBoundary context="Application Root">
       <AuthProvider>

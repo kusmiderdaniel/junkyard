@@ -27,15 +27,28 @@ interface RateLimitResult {
 class RateLimiter {
   private limits: Map<string, RateLimitEntry> = new Map();
   private configs: Map<string, RateLimitConfig> = new Map();
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     // Clean up expired entries every 5 minutes
-    setInterval(
+    this.cleanupInterval = setInterval(
       () => {
         this.cleanup();
       },
       5 * 60 * 1000
     );
+  }
+
+  /**
+   * Destroy the rate limiter and clean up resources
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.limits.clear();
+    this.configs.clear();
   }
 
   /**

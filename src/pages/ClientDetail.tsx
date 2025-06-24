@@ -13,7 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { usePDFReceipt } from '../components/PDFReceipt';
-import { Workbook } from 'exceljs';
+// ExcelJS will be lazy loaded
 import { createSanitizedInputHandler } from '../utils/inputSanitizer';
 
 interface ReceiptItem {
@@ -360,7 +360,7 @@ const ClientDetail: React.FC = () => {
     return false;
   });
 
-  // Handle Excel Export
+  // Handle Excel Export using lazy loading
   const handleExportToExcel = async () => {
     if (!client) return;
 
@@ -395,128 +395,51 @@ const ClientDetail: React.FC = () => {
         return;
       }
 
-      // Create workbook and worksheet
-      const workbook = new Workbook();
-      const worksheet = workbook.addWorksheet('Kwity klienta');
+      // Lazy load Excel export utility
+      const { ExcelExportUtility } = await import('../utils/excelExport');
 
-      // Add header information
-      const currentDate = new Date().toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-
-      let currentRow = 1;
-
-      // Add report header
-      worksheet.getCell(`A${currentRow}`).value =
-        `Raport klienta wygenerowany: ${currentDate}`;
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow += 2;
-
-      // Add client information
-      worksheet.getCell(`A${currentRow}`).value = 'Klient:';
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value = `• Nazwa: ${client.name}`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value = `• Adres: ${client.address}`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value =
-        `• Numer dokumentu: ${client.documentNumber}`;
-      currentRow += 2;
-
+      // Prepare filters
+      const filters: Record<string, string> = {};
       if (searchTerm) {
-        worksheet.getCell(`A${currentRow}`).value = 'Zastosowane filtry:';
-        worksheet.getCell(`A${currentRow}`).font = { bold: true };
-        currentRow++;
-        worksheet.getCell(`A${currentRow}`).value =
-          `• Wyszukiwanie: "${searchTerm}"`;
-        currentRow += 2;
+        filters['Wyszukiwanie'] = `"${searchTerm}"`;
       }
 
-      // Add summary information
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna liczba pozycji: ${excelData.length}`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna liczba kwitów: ${filteredReceipts.length}`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna ilość: ${kpis.totalQuantity.toFixed(2)} kg`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna kwota: ${formatCurrency(kpis.totalAmount)}`;
-      currentRow += 3;
-
-      // Add table headers
-      const headers = [
-        'Numer kwitu',
-        'Data',
-        'Klient',
-        'Nazwa towaru',
-        'Kod towaru',
-        'Ilość',
-        'Jednostka',
-        'Cena zakupu',
-        'Wartość pozycji',
-      ];
-      const headerRow = worksheet.getRow(currentRow);
-      headerRow.values = headers;
-      headerRow.font = { bold: true };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF366092' },
+      // Prepare summary information
+      const summary = {
+        'Łączna liczba pozycji': excelData.length.toString(),
+        'Łączna liczba kwitów': filteredReceipts.length.toString(),
+        'Łączna ilość': `${kpis.totalQuantity.toFixed(2)} kg`,
+        'Łączna kwota': formatCurrency(kpis.totalAmount),
       };
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      currentRow++;
 
-      // Add data rows
-      excelData.forEach(rowData => {
-        const row = worksheet.getRow(currentRow);
-        row.values = [
-          rowData['Numer kwitu'],
-          rowData['Data'],
-          rowData['Klient'],
-          rowData['Nazwa towaru'],
-          rowData['Kod towaru'],
-          rowData['Ilość'],
-          rowData['Jednostka'],
-          rowData['Cena zakupu'],
-          rowData['Wartość pozycji'],
-        ];
-        currentRow++;
-      });
-
-      // Set column widths
-      worksheet.columns = [
-        { width: 15 }, // Numer kwitu
-        { width: 12 }, // Data
-        { width: 25 }, // Klient
-        { width: 30 }, // Nazwa towaru
-        { width: 15 }, // Kod towaru
-        { width: 10 }, // Ilość
-        { width: 10 }, // Jednostka
-        { width: 12 }, // Cena zakupu
-        { width: 15 }, // Wartość pozycji
-      ];
+      // Prepare subtitle with client information
+      const subtitle = `Klient: ${client.name}\nAdres: ${client.address}\nNumer dokumentu: ${client.documentNumber}`;
 
       // Generate filename
       const clientNameSafe = client.name.replace(/[^a-zA-Z0-9\s]/g, '');
-      const filename = `kwity_${clientNameSafe}.xlsx`;
+      const filename = `kwity_${clientNameSafe}`;
 
-      // Download the file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      // Export using the utility
+      await ExcelExportUtility.exportToExcel({
+        filename,
+        worksheetName: 'Kwity klienta',
+        headers: [
+          'Numer kwitu',
+          'Data',
+          'Klient',
+          'Nazwa towaru',
+          'Kod towaru',
+          'Ilość',
+          'Jednostka',
+          'Cena zakupu',
+          'Wartość pozycji',
+        ],
+        data: excelData,
+        title: 'Raport klienta wygenerowany',
+        subtitle,
+        filters,
+        summary,
       });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       toast.error('Błąd podczas eksportu do Excel. Spróbuj ponownie.');
     }

@@ -20,7 +20,12 @@ export const useOfflineSync = () => {
 
   // Manual sync trigger
   const triggerSync = useCallback(async (): Promise<SyncResult | null> => {
-    if (!user || !isOnline || isSyncing) {
+    if (!user || !isOnline) {
+      return null;
+    }
+
+    // Check if already syncing using state directly to avoid dependency loop
+    if (syncService.getIsSyncing()) {
       return null;
     }
 
@@ -57,15 +62,17 @@ export const useOfflineSync = () => {
     } finally {
       setIsSyncing(false);
     }
-  }, [user, isOnline, isSyncing, updatePendingCount]);
+  }, [user, isOnline, updatePendingCount]);
 
   // Auto-sync when coming back online
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const checkAndSync = async () => {
       if (
         user &&
         isOnline &&
-        !isSyncing &&
+        !syncService.getIsSyncing() &&
         (await syncService.hasPendingOperations())
       ) {
         if (process.env.NODE_ENV === 'development') {
@@ -75,7 +82,7 @@ export const useOfflineSync = () => {
         }
 
         // Wait longer to ensure stable connection and prevent race conditions
-        const timeoutId = setTimeout(async () => {
+        timeoutId = setTimeout(async () => {
           try {
             await triggerSync();
 
@@ -93,13 +100,19 @@ export const useOfflineSync = () => {
             }
           }
         }, 3000); // Increased to 3 seconds for better stability
-
-        return () => clearTimeout(timeoutId);
       }
     };
 
-    checkAndSync();
-  }, [user, isOnline, isSyncing, triggerSync]);
+    if (user && isOnline) {
+      checkAndSync();
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [user, isOnline, triggerSync]);
 
   // Update pending count when operations are added
   useEffect(() => {

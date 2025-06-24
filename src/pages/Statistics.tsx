@@ -18,7 +18,7 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import { Workbook } from 'exceljs';
+// Remove direct import - will be lazy loaded
 
 interface ReceiptItem {
   itemName: string;
@@ -323,7 +323,7 @@ const Statistics: React.FC = () => {
     0
   );
 
-  // Excel export function
+  // Excel export function using lazy loading
   const handleExportToExcel = async () => {
     try {
       // Create data for Excel export using sorted statistics
@@ -339,25 +339,10 @@ const Statistics: React.FC = () => {
         return;
       }
 
-      // Create workbook and worksheet
-      const workbook = new Workbook();
-      const worksheet = workbook.addWorksheet('Statystyki produktów');
+      // Lazy load Excel export utility
+      const { ExcelExportUtility } = await import('../utils/excelExport');
 
-      const currentDate = new Date().toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-
-      let currentRow = 1;
-
-      // Add report header
-      worksheet.getCell(`A${currentRow}`).value =
-        `Raport statystyk wygenerowany: ${currentDate}`;
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow += 2;
-
-      // Add filter context
+      // Prepare filter information
       const { start, end } = getDateRange(dateFilter);
       const formatDate = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
@@ -366,11 +351,6 @@ const Statistics: React.FC = () => {
         return `${day}/${month}/${year}`;
       };
 
-      worksheet.getCell(`A${currentRow}`).value = 'Zastosowane filtry:';
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow++;
-
-      // Date range filter
       let dateRangeLabel = '';
       switch (dateFilter) {
         case 'thisWeek':
@@ -393,77 +373,32 @@ const Statistics: React.FC = () => {
           break;
       }
 
-      worksheet.getCell(`A${currentRow}`).value =
-        `• Okres: ${dateRangeLabel} (${formatDate(start)} - ${formatDate(end)})`;
-      currentRow++;
-
-      if (selectedItemCode) {
-        worksheet.getCell(`A${currentRow}`).value =
-          `• Kod produktu: ${selectedItemCode}`;
-      } else {
-        worksheet.getCell(`A${currentRow}`).value = '• Kod produktu: Wszystkie';
-      }
-      currentRow += 2;
-
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna liczba pozycji: ${excelData.length}`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna ilość: ${totalQuantity.toFixed(2)} kg`;
-      currentRow++;
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna kwota: ${formatCurrency(totalAmount)}`;
-      currentRow += 3;
-
-      // Add table headers
-      const headers = ['Kod produktu', 'Nazwa produktu', 'Ilość', 'Kwota'];
-      const headerRow = worksheet.getRow(currentRow);
-      headerRow.values = headers;
-      headerRow.font = { bold: true };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF366092' },
+      const filters: Record<string, string> = {
+        Okres: `${dateRangeLabel} (${formatDate(start)} - ${formatDate(end)})`,
+        'Kod produktu': selectedItemCode || 'Wszystkie',
       };
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      currentRow++;
 
-      // Add data rows
-      excelData.forEach(rowData => {
-        const row = worksheet.getRow(currentRow);
-        row.values = [
-          rowData['Kod produktu'],
-          rowData['Nazwa produktu'],
-          rowData['Ilość'],
-          rowData['Kwota'],
-        ];
-        currentRow++;
-      });
-
-      // Set column widths
-      worksheet.columns = [
-        { width: 15 }, // Kod produktu
-        { width: 30 }, // Nazwa produktu
-        { width: 15 }, // Ilość
-        { width: 15 }, // Kwota
-      ];
+      const summary = {
+        'Łączna liczba pozycji': excelData.length.toString(),
+        'Łączna ilość': `${totalQuantity.toFixed(2)} kg`,
+        'Łączna kwota': formatCurrency(totalAmount),
+      };
 
       // Generate filename
       const filterSuffix =
         selectedItemCode || dateFilter !== 'thisMonth' ? `-filtered` : '';
-      const filename = `statistics${filterSuffix}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      const filename = `statistics${filterSuffix}-${new Date().toISOString().split('T')[0]}`;
 
-      // Download the file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      // Export using the utility
+      await ExcelExportUtility.exportToExcel({
+        filename,
+        worksheetName: 'Statystyki produktów',
+        headers: ['Kod produktu', 'Nazwa produktu', 'Ilość', 'Kwota'],
+        data: excelData,
+        title: 'Raport statystyk wygenerowany',
+        filters,
+        summary,
       });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       toast.error('Błąd podczas eksportu do Excel. Spróbuj ponownie.');
     }

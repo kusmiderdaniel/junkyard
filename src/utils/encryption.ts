@@ -134,7 +134,11 @@ export const migrateUnencryptedData = async (
   userUID: string
 ): Promise<void> => {
   if (!isEncryptionAvailable()) {
-    console.warn('Web Crypto API not available, skipping encryption migration');
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(
+        'Web Crypto API not available, skipping encryption migration'
+      );
+    }
     return;
   }
 
@@ -158,7 +162,9 @@ export const migrateUnencryptedData = async (
         const encrypted = await encryptData(parsed, userUID);
         localStorage.setItem(key, encrypted);
       } catch (error) {
-        console.error(`Failed to migrate ${key}:`, error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`Failed to migrate ${key}:`, error);
+        }
       }
     }
   }

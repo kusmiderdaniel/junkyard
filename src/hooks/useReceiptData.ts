@@ -120,10 +120,12 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try cached data as fallback
       if (!isOffline) {
-        console.warn(
-          'Online company details fetch failed, trying cached data:',
-          error
-        );
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online company details fetch failed, trying cached data:',
+            error
+          );
+        }
         const cachedCompanyDetails =
           await offlineStorage.getCachedCompanyDetails();
         if (cachedCompanyDetails) {
@@ -185,7 +187,12 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try cached data as fallback
       if (!isOffline) {
-        console.warn('Online client fetch failed, trying cached data:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online client fetch failed, trying cached data:',
+            error
+          );
+        }
         const cachedClients = await offlineStorage.getCachedClients();
         if (cachedClients.length > 0) {
           setClients(cachedClients);
@@ -244,10 +251,12 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try to generate from cached data
       if (!isOffline) {
-        console.warn(
-          'Online available months fetch failed, trying cached data:',
-          error
-        );
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online available months fetch failed, trying cached data:',
+            error
+          );
+        }
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           const months = new Set<string>();
@@ -679,13 +688,15 @@ export const useReceiptData = ({
 
   // Listen for sync completion to refresh data
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const handleSyncCompleted = async () => {
       if (process.env.NODE_ENV === 'development') {
         console.log('📡 Sync completed - refreshing data...');
       }
 
       // Force refresh all data after sync with longer delay
-      setTimeout(async () => {
+      timeoutId = setTimeout(async () => {
         if (user && !syncService.getIsSyncing()) {
           await fetchClients();
           await fetchReceipts();
@@ -698,6 +709,9 @@ export const useReceiptData = ({
 
     return () => {
       window.removeEventListener('sync-completed', handleSyncCompleted);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [user, fetchClients, fetchReceipts, fetchAvailableMonths]);
 
