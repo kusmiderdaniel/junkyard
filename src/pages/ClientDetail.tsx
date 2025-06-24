@@ -13,7 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { usePDFReceipt } from '../components/PDFReceipt';
-import * as ExcelJS from 'exceljs';
+import { Workbook } from 'exceljs';
 
 interface ReceiptItem {
   productId: string;
@@ -144,76 +144,7 @@ const ClientDetail: React.FC = () => {
     }
   }, [user]);
 
-  // Temporary diagnostic function - remove after debugging
-  const diagnosticReceiptCheck = useCallback(async () => {
-    if (!user || !clientId) return;
-
-    try {
-      console.log('🔧 DIAGNOSTIC: Running receipt check...');
-
-      // Query 1: Same as Clients.tsx (all receipts for user)
-      const allReceiptsQuery = query(
-        collection(db, 'receipts'),
-        where('userID', '==', user.uid)
-      );
-      const allReceiptsSnapshot = await getDocs(allReceiptsQuery);
-
-      console.log(
-        '📊 Total receipts for user:',
-        allReceiptsSnapshot.docs.length
-      );
-
-      // Check which clients have receipts
-      const clientReceiptMap: { [clientId: string]: number } = {};
-      allReceiptsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const cId = data.clientId;
-        if (cId) {
-          clientReceiptMap[cId] = (clientReceiptMap[cId] || 0) + 1;
-        }
-      });
-
-      console.log('📋 Receipt count by client:', clientReceiptMap);
-      console.log(
-        '🎯 Current client should have:',
-        clientReceiptMap[clientId] || 0,
-        'receipts'
-      );
-
-      // Query 2: Specific client receipts without orderBy (to test if index is the issue)
-      const clientReceiptsNoOrderQuery = query(
-        collection(db, 'receipts'),
-        where('userID', '==', user.uid),
-        where('clientId', '==', clientId)
-      );
-      const clientReceiptsNoOrderSnapshot = await getDocs(
-        clientReceiptsNoOrderQuery
-      );
-
-      console.log(
-        '📝 Client receipts found (no orderBy):',
-        clientReceiptsNoOrderSnapshot.docs.length
-      );
-
-      // Check first few receipt details
-      console.log('🔍 Sample receipts for this client:');
-      allReceiptsSnapshot.docs
-        .filter(doc => doc.data().clientId === clientId)
-        .slice(0, 3)
-        .forEach((doc, index) => {
-          const data = doc.data();
-          console.log(`Receipt ${index + 1}:`, {
-            id: doc.id,
-            number: data.number,
-            clientId: data.clientId,
-            userID: data.userID,
-            date: data.date,
-          });
-        });
-    } catch (error) {
-      console.error('🚨 Diagnostic error:', error);
-    }
-  }, [user, clientId]);
+  // Diagnostic function removed - temporary debugging code has been cleaned up
 
   // Fetch receipts for this client
   const fetchClientReceipts = useCallback(async () => {
@@ -221,14 +152,16 @@ const ClientDetail: React.FC = () => {
 
     setLoading(true);
     try {
-      // Debug logging for production issues
-      console.log(
-        '🔍 Fetching receipts for client:',
-        clientId,
-        'user:',
-        user.uid
-      );
-      console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
+      // Debug logging for development only
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          '🔍 Fetching receipts for client:',
+          clientId,
+          'user:',
+          user.uid
+        );
+        console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
+      }
 
       const receiptsQuery = query(
         collection(db, 'receipts'),
@@ -244,7 +177,9 @@ const ClientDetail: React.FC = () => {
         date: doc.data().date.toDate(),
       })) as Receipt[];
 
-      console.log('✅ Found receipts for this client:', receiptsData.length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Found receipts for this client:', receiptsData.length);
+      }
 
       setReceipts(receiptsData);
 
@@ -263,27 +198,34 @@ const ClientDetail: React.FC = () => {
 
       setKPIs({ totalQuantity, totalAmount, receiptCount });
     } catch (error) {
-      console.error('❌ Error fetching receipts for client:', error);
-      console.error('Error details:', {
-        clientId,
-        userID: user.uid,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        errorCode:
-          error && typeof error === 'object' && 'code' in error
-            ? (error as any).code
-            : 'no-code',
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Error fetching receipts for client:', error);
+        console.error('Error details:', {
+          clientId,
+          userID: user.uid,
+          errorMessage:
+            error instanceof Error ? error.message : 'Unknown error',
+          errorCode:
+            error && typeof error === 'object' && 'code' in error
+              ? (error as any).code
+              : 'no-code',
+        });
+      }
 
       // Check if it's a missing index error
       if (error instanceof Error && error.message.includes('index')) {
-        console.error(
-          '🚨 This looks like a missing Firestore index error. The index may still be building.'
-        );
+        if (process.env.NODE_ENV === 'development') {
+          console.error(
+            '🚨 This looks like a missing Firestore index error. The index may still be building.'
+          );
+        }
         toast.error(
           'Indeks bazy danych jest w trakcie budowania. Spróbuj ponownie za kilka minut.'
         );
       } else {
-        console.error('💥 Unexpected error:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('💥 Unexpected error:', error);
+        }
       }
 
       // Receipts list will remain empty if fetch fails
@@ -297,14 +239,7 @@ const ClientDetail: React.FC = () => {
     fetchClient();
     fetchCompanyDetails();
     fetchClientReceipts();
-    // Run diagnostic check for debugging
-    diagnosticReceiptCheck();
-  }, [
-    fetchClient,
-    fetchCompanyDetails,
-    fetchClientReceipts,
-    diagnosticReceiptCheck,
-  ]);
+  }, [fetchClient, fetchCompanyDetails, fetchClientReceipts]);
 
   // PDF Handlers
   const handleViewPDF = async (receipt: Receipt) => {
@@ -454,7 +389,7 @@ const ClientDetail: React.FC = () => {
       }
 
       // Create workbook and worksheet
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new Workbook();
       const worksheet = workbook.addWorksheet('Kwity klienta');
 
       // Add header information

@@ -260,6 +260,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
                 ? 'border-red-300 focus:ring-red-500'
                 : 'border-gray-300 focus:ring-orange-600'
             }`}
+            placeholder="0,00"
           />
           <span className="text-xs text-gray-500">{item.unit}</span>
         </div>
@@ -297,7 +298,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
                 ? 'border-red-300 focus:ring-red-500'
                 : 'border-gray-300 focus:ring-orange-600'
             }`}
-            placeholder="0.00"
+            placeholder="0,00"
           />
           <span className="text-xs text-gray-500">zł</span>
         </div>
@@ -305,7 +306,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
 
       <td className="px-4 py-4">
         <div className="flex items-center space-x-2">
-          <div className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 text-right text-sm">
+          <div className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500 text-right">
             {item.sell_price.toFixed(2).replace('.', ',')}
           </div>
           <span className="text-xs text-gray-500">zł</span>

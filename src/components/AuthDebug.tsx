@@ -11,16 +11,18 @@ const AuthDebug: React.FC = () => {
       setUser(currentUser);
       setLoading(false);
 
-      // Debug info
-      console.log('🔐 Auth Debug Info:');
-      console.log('Current User:', currentUser);
-      console.log('Project ID from config:', auth.app.options.projectId);
-      console.log('Auth Domain from config:', auth.app.options.authDomain);
+      // Debug info (development only)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 Auth Debug Info:');
+        console.log('Current User:', currentUser);
+        console.log('Project ID from config:', auth.app.options.projectId);
+        console.log('Auth Domain from config:', auth.app.options.authDomain);
 
-      if (currentUser) {
-        console.log('User UID:', currentUser.uid);
-        console.log('User Email:', currentUser.email);
-        console.log('User Provider Data:', currentUser.providerData);
+        if (currentUser) {
+          console.log('User UID:', currentUser.uid);
+          console.log('User Email:', currentUser.email);
+          console.log('User Provider Data:', currentUser.providerData);
+        }
       }
     });
 
@@ -83,9 +85,9 @@ const AuthDebug: React.FC = () => {
         <div className="text-xs text-gray-600">
           <strong>Expected for Development:</strong>
           <br />
-          Project ID should be: junkyard-dev-9497a
+          Project ID should be: {process.env.REACT_APP_FIREBASE_PROJECT_ID}
           <br />
-          Auth Domain should be: junkyard-dev-9497a.firebaseapp.com
+          Auth Domain should be: {process.env.REACT_APP_FIREBASE_AUTH_DOMAIN}
         </div>
       </div>
     </div>

@@ -1,0 +1,24 @@
+## 🚨 Quick Action Items for Key Rotation
+
+1. Open these 3 Firebase Console links in new tabs:
+   - Production: https://console.firebase.google.com/project/junkyard-31ade/settings/general
+   - Development: https://console.firebase.google.com/project/junkyard-dev-9497a/settings/general
+   - Staging: https://console.firebase.google.com/project/junkyard-staging/settings/general
+
+2. For EACH project:
+   - Go to 'Your apps' section
+   - Click gear icon next to web app
+   - Delete current API key
+   - Generate new API key
+   - Copy it immediately
+
+3. Update GitHub Secrets:
+   - PROD_FIREBASE_API_KEY
+   - DEV_FIREBASE_API_KEY
+   - STAGING_FIREBASE_API_KEY
+
+4. Update your local .env files
+
+5. Test everything works
+
+Time needed: ~30 minutes

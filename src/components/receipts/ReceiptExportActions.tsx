@@ -3,7 +3,7 @@ import { db } from '../../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { pdf } from '@react-pdf/renderer';
 import toast from 'react-hot-toast';
-import * as ExcelJS from 'exceljs';
+import { Workbook } from 'exceljs';
 import ReceiptsSummaryDocument from './ReceiptsSummaryDocument';
 import {
   Receipt,
@@ -249,7 +249,7 @@ export const useReceiptExportActions = ({
       }
 
       // Create workbook and worksheet
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new Workbook();
       const worksheet = workbook.addWorksheet('Szczegóły kwitów');
 
       const currentDate = new Date().toLocaleDateString('pl-PL', {

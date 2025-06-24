@@ -66,13 +66,13 @@ jobs:
 
       - name: Create development environment file
         run: |
-          echo "REACT_APP_FIREBASE_API_KEY=AIzaSyAqF8nEqXOwiaI_q6gv-TqtP8vVUSOLyXM" > .env.development.local
-          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=junkyard-dev-9497a.firebaseapp.com" >> .env.development.local
-          echo "REACT_APP_FIREBASE_PROJECT_ID=junkyard-dev-9497a" >> .env.development.local
-          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=junkyard-dev-9497a.firebasestorage.app" >> .env.development.local
-          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=160984787912" >> .env.development.local
-          echo "REACT_APP_FIREBASE_APP_ID=1:160984787912:web:6ad6e938c90f1b883baefd" >> .env.development.local
-          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=G-01XBPBNZX3" >> .env.development.local
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.DEV_FIREBASE_API_KEY }}" > .env.development.local
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.DEV_FIREBASE_PROJECT_ID }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.DEV_FIREBASE_APP_ID }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.DEV_FIREBASE_MEASUREMENT_ID }}" >> .env.development.local
           echo "REACT_APP_ENV=development" >> .env.development.local
 
       - name: Build for development
@@ -108,13 +108,13 @@ jobs:
 
       - name: Create staging environment file
         run: |
-          echo "REACT_APP_FIREBASE_API_KEY=AIzaSyDJh1ooJsdC5MVZm4xpOdLn3IcOtxT2AKc" > .env.staging.local
-          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=junkyard-staging.firebaseapp.com" >> .env.staging.local
-          echo "REACT_APP_FIREBASE_PROJECT_ID=junkyard-staging" >> .env.staging.local
-          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=junkyard-staging.firebasestorage.app" >> .env.staging.local
-          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=628515031828" >> .env.staging.local
-          echo "REACT_APP_FIREBASE_APP_ID=1:628515031828:web:aab23d835bd1fe7e035001" >> .env.staging.local
-          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=G-RB1T32MPXV" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.STAGING_FIREBASE_API_KEY }}" > .env.staging.local
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.STAGING_FIREBASE_AUTH_DOMAIN }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.STAGING_FIREBASE_STORAGE_BUCKET }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.STAGING_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.STAGING_FIREBASE_APP_ID }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.STAGING_FIREBASE_MEASUREMENT_ID }}" >> .env.staging.local
           echo "REACT_APP_ENV=staging" >> .env.staging.local
 
       - name: Build for staging
@@ -150,13 +150,13 @@ jobs:
 
       - name: Create production environment file
         run: |
-          echo "REACT_APP_FIREBASE_API_KEY=AIzaSyBu_ROCWssqlbRGkR5hBcElX8qyywwwdSk" > .env.production.local
-          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=junkyard-31ade.firebaseapp.com" >> .env.production.local
-          echo "REACT_APP_FIREBASE_PROJECT_ID=junkyard-31ade" >> .env.production.local
-          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=junkyard-31ade.firebasestorage.app" >> .env.production.local
-          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=151876331997" >> .env.production.local
-          echo "REACT_APP_FIREBASE_APP_ID=1:151876331997:web:0c55e72e74cbe72d8f2e34" >> .env.production.local
-          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=G-CVC4FY3WWT" >> .env.production.local
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.PROD_FIREBASE_API_KEY }}" > .env.production.local
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.PROD_FIREBASE_AUTH_DOMAIN }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.PROD_FIREBASE_PROJECT_ID }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.PROD_FIREBASE_STORAGE_BUCKET }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.PROD_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.PROD_FIREBASE_APP_ID }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.PROD_FIREBASE_MEASUREMENT_ID }}" >> .env.production.local
           echo "REACT_APP_ENV=production" >> .env.production.local
 
       - name: Build for production
@@ -194,22 +194,22 @@ jobs:
       - name: Create environment file
         run: |
           if [ "${{ github.event.inputs.environment }}" == "development" ]; then
-            echo "REACT_APP_FIREBASE_API_KEY=AIzaSyAqF8nEqXOwiaI_q6gv-TqtP8vVUSOLyXM" > .env.development.local
-            echo "REACT_APP_FIREBASE_AUTH_DOMAIN=junkyard-dev-9497a.firebaseapp.com" >> .env.development.local
-            echo "REACT_APP_FIREBASE_PROJECT_ID=junkyard-dev-9497a" >> .env.development.local
-            echo "REACT_APP_FIREBASE_STORAGE_BUCKET=junkyard-dev-9497a.firebasestorage.app" >> .env.development.local
-            echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=160984787912" >> .env.development.local
-            echo "REACT_APP_FIREBASE_APP_ID=1:160984787912:web:6ad6e938c90f1b883baefd" >> .env.development.local
-            echo "REACT_APP_FIREBASE_MEASUREMENT_ID=G-01XBPBNZX3" >> .env.development.local
+            echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.DEV_FIREBASE_API_KEY }}" > .env.development.local
+            echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.DEV_FIREBASE_PROJECT_ID }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.DEV_FIREBASE_APP_ID }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.DEV_FIREBASE_MEASUREMENT_ID }}" >> .env.development.local
             echo "REACT_APP_ENV=development" >> .env.development.local
           elif [ "${{ github.event.inputs.environment }}" == "staging" ]; then
-            echo "REACT_APP_FIREBASE_API_KEY=AIzaSyDJh1ooJsdC5MVZm4xpOdLn3IcOtxT2AKc" > .env.staging.local
-            echo "REACT_APP_FIREBASE_AUTH_DOMAIN=junkyard-staging.firebaseapp.com" >> .env.staging.local
-            echo "REACT_APP_FIREBASE_PROJECT_ID=junkyard-staging" >> .env.staging.local
-            echo "REACT_APP_FIREBASE_STORAGE_BUCKET=junkyard-staging.firebasestorage.app" >> .env.staging.local
-            echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=628515031828" >> .env.staging.local
-            echo "REACT_APP_FIREBASE_APP_ID=1:628515031828:web:aab23d835bd1fe7e035001" >> .env.staging.local
-            echo "REACT_APP_FIREBASE_MEASUREMENT_ID=G-RB1T32MPXV" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.STAGING_FIREBASE_API_KEY }}" > .env.staging.local
+            echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.STAGING_FIREBASE_AUTH_DOMAIN }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.STAGING_FIREBASE_STORAGE_BUCKET }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.STAGING_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.STAGING_FIREBASE_APP_ID }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.STAGING_FIREBASE_MEASUREMENT_ID }}" >> .env.staging.local
             echo "REACT_APP_ENV=staging" >> .env.staging.local
           fi
 

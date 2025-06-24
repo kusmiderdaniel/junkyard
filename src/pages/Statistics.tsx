@@ -18,7 +18,7 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import * as ExcelJS from 'exceljs';
+import { Workbook } from 'exceljs';
 
 interface ReceiptItem {
   itemName: string;
@@ -340,7 +340,7 @@ const Statistics: React.FC = () => {
       }
 
       // Create workbook and worksheet
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new Workbook();
       const worksheet = workbook.addWorksheet('Statystyki produktów');
 
       const currentDate = new Date().toLocaleDateString('pl-PL', {
