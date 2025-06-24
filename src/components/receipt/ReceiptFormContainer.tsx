@@ -81,7 +81,9 @@ const ReceiptFormContainer: React.FC = () => {
           initializeItems();
         }
       } catch (error) {
-        console.error('Error initializing component:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error initializing component:', error);
+        }
       }
     };
 

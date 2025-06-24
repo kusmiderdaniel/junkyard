@@ -11,16 +11,18 @@ const AuthDebug: React.FC = () => {
       setUser(currentUser);
       setLoading(false);
 
-      // Debug info
-      console.log('🔐 Auth Debug Info:');
-      console.log('Current User:', currentUser);
-      console.log('Project ID from config:', auth.app.options.projectId);
-      console.log('Auth Domain from config:', auth.app.options.authDomain);
+      // Debug info (development only)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 Auth Debug Info:');
+        console.log('Current User:', currentUser);
+        console.log('Project ID from config:', auth.app.options.projectId);
+        console.log('Auth Domain from config:', auth.app.options.authDomain);
 
-      if (currentUser) {
-        console.log('User UID:', currentUser.uid);
-        console.log('User Email:', currentUser.email);
-        console.log('User Provider Data:', currentUser.providerData);
+        if (currentUser) {
+          console.log('User UID:', currentUser.uid);
+          console.log('User Email:', currentUser.email);
+          console.log('User Provider Data:', currentUser.providerData);
+        }
       }
     });
 

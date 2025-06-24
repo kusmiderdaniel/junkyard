@@ -67,7 +67,9 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
 
         if (isOffline) {
           // Load from offline cache only
-          console.log('📱 Loading clients from offline cache');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📱 Loading clients from offline cache');
+          }
           const cachedClients = offlineStorage.getCachedClients();
           setClients(cachedClients);
         } else {
@@ -223,7 +225,9 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
           );
 
           if (newClient) {
-            console.log('Auto-selecting newly added client:', newClient.name);
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Auto-selecting newly added client:', newClient.name);
+            }
             handleClientSelect(newClient);
             return true;
           }

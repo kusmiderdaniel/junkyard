@@ -35,12 +35,14 @@ if (missingEnvVars.length > 0) {
   );
 }
 
-// Debug: Log the configuration being used
-console.log('🔥 Firebase Configuration Debug:');
-console.log('Project ID:', firebaseConfig.projectId);
-console.log('Auth Domain:', firebaseConfig.authDomain);
-console.log('Environment:', process.env.REACT_APP_ENV);
-console.log('Node Environment:', process.env.NODE_ENV);
+// Debug: Log the configuration being used (development only)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔥 Firebase Configuration Debug:');
+  console.log('Project ID:', firebaseConfig.projectId);
+  console.log('Auth Domain:', firebaseConfig.authDomain);
+  console.log('Environment:', process.env.REACT_APP_ENV);
+  console.log('Node Environment:', process.env.NODE_ENV);
+}
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -71,7 +73,10 @@ if (
 }
 */
 
-console.log('🔥 Using LIVE Firebase project:', firebaseConfig.projectId);
+// Log Firebase project usage in development only
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔥 Using LIVE Firebase project:', firebaseConfig.projectId);
+}
 
 // Utility function to verify user authentication
 export const getCurrentUserId = () => {

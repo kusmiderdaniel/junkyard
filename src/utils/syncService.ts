@@ -81,10 +81,12 @@ class SyncService {
         offlineStorage.removePendingOperation(operation.id);
         result.syncedOperations++;
       } catch (error) {
-        console.error(
-          `❌ Failed to sync operation: ${operation.type} (${operation.id})`,
-          error
-        );
+        if (process.env.NODE_ENV === 'development') {
+          console.error(
+            `❌ Failed to sync operation: ${operation.type} (${operation.id})`,
+            error
+          );
+        }
         result.failedOperations++;
         result.errors.push(
           `${operation.type}: ${error instanceof Error ? error.message : 'Unknown error'}`

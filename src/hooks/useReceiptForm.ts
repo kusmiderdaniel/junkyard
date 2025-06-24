@@ -189,7 +189,9 @@ export const useReceiptForm = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching data:', error);
+      }
     } finally {
       setLoading(false);
     }

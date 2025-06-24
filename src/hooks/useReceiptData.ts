@@ -374,7 +374,9 @@ export const useReceiptData = ({
         const paginated = filteredReceipts.slice(start, start + itemsPerPage);
         setReceipts(paginated);
 
-        console.log('📱 Loaded receipts from cache (offline mode)');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📱 Loaded receipts from cache (offline mode)');
+        }
         return;
       }
 
