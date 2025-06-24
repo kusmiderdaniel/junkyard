@@ -116,8 +116,16 @@ const ReceiptFormContainer: React.FC = () => {
     initializeItems();
     setShowValidationErrors(false);
 
-    // Generate new receipt number for current date
-    const newReceiptNumber = await generateReceiptNumber(date);
+    // Set date to today's date
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+    handleDateChange(todayString);
+
+    // Generate new receipt number for today's date
+    const newReceiptNumber = await generateReceiptNumber(todayString);
     setReceiptNumber(newReceiptNumber);
 
     // Focus the client selector with multiple attempts to ensure it works
@@ -135,7 +143,7 @@ const ReceiptFormContainer: React.FC = () => {
     initializeItems,
     setShowValidationErrors,
     generateReceiptNumber,
-    date,
+    handleDateChange,
     setReceiptNumber,
     setSelectedClient,
   ]);
