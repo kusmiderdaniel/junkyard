@@ -115,8 +115,9 @@ export const useReceiptForm = () => {
       setLoading(true);
 
       if (isOffline) {
-        const cachedProducts = offlineStorage.getCachedProducts();
-        const cachedCompanyDetails = offlineStorage.getCachedCompanyDetails();
+        const cachedProducts = await offlineStorage.getCachedProducts();
+        const cachedCompanyDetails =
+          await offlineStorage.getCachedCompanyDetails();
 
         setProducts(cachedProducts);
         setCompanyDetails(
@@ -165,13 +166,14 @@ export const useReceiptForm = () => {
             setCompanyDetails(companyData);
           }
 
-          offlineStorage.cacheProducts(productsData);
+          await offlineStorage.cacheProducts(productsData);
           if (companyData) {
-            offlineStorage.cacheCompanyDetails(companyData);
+            await offlineStorage.cacheCompanyDetails(companyData);
           }
         } catch (error) {
-          const cachedProducts = offlineStorage.getCachedProducts();
-          const cachedCompanyDetails = offlineStorage.getCachedCompanyDetails();
+          const cachedProducts = await offlineStorage.getCachedProducts();
+          const cachedCompanyDetails =
+            await offlineStorage.getCachedCompanyDetails();
 
           setProducts(cachedProducts);
           setCompanyDetails(

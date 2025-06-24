@@ -62,8 +62,8 @@ const Products: React.FC = () => {
     try {
       // If offline, use cached data
       if (isOffline) {
-        const cachedCategories = offlineStorage.getCachedCategories();
-        const cachedProducts = offlineStorage.getCachedProducts();
+        const cachedCategories = await offlineStorage.getCachedCategories();
+        const cachedProducts = await offlineStorage.getCachedProducts();
 
         setCategories(cachedCategories);
         setProducts(cachedProducts);
@@ -83,7 +83,7 @@ const Products: React.FC = () => {
       })) as Category[];
 
       // Cache categories for offline use
-      offlineStorage.cacheCategories(categoriesData);
+      await offlineStorage.cacheCategories(categoriesData);
       setCategories(categoriesData);
 
       // Fetch products for current user
@@ -98,7 +98,7 @@ const Products: React.FC = () => {
       })) as Product[];
 
       // Cache products for offline use
-      offlineStorage.cacheProducts(productsData);
+      await offlineStorage.cacheProducts(productsData);
       setProducts(productsData);
     } catch (error) {
       // If online fetch fails, try to use cached data as fallback
@@ -107,8 +107,8 @@ const Products: React.FC = () => {
           'Online products/categories fetch failed, trying cached data:',
           error
         );
-        const cachedCategories = offlineStorage.getCachedCategories();
-        const cachedProducts = offlineStorage.getCachedProducts();
+        const cachedCategories = await offlineStorage.getCachedCategories();
+        const cachedProducts = await offlineStorage.getCachedProducts();
 
         if (cachedCategories.length > 0 || cachedProducts.length > 0) {
           setCategories(cachedCategories);

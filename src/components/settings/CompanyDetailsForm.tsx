@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  sanitizeCompanyData,
+  createSanitizedInputHandler,
+  validateInputSafety,
+} from '../../utils/inputSanitizer';
 
 interface CompanyDetails {
   companyName: string;
@@ -19,13 +24,16 @@ interface CompanyDetailsFormProps {
   onError?: (message: string) => void;
 }
 
-const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onError }) => {
+const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({
+  onSuccess,
+  onError,
+}) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+
   const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({
     companyName: '',
     numberNIP: '',
@@ -37,6 +45,40 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
     phoneNumber: '',
   });
 
+  // Create sanitized input handlers
+  const handleCompanyNameChange = createSanitizedInputHandler(
+    value => handleInputChange('companyName', value),
+    { maxLength: 200 }
+  );
+  const handleNIPChange = createSanitizedInputHandler(
+    value => handleInputChange('numberNIP', value),
+    { maxLength: 20, preserveWhitespace: false }
+  );
+  const handleREGONChange = createSanitizedInputHandler(
+    value => handleInputChange('numberREGON', value),
+    { maxLength: 20, preserveWhitespace: false }
+  );
+  const handleAddressChange = createSanitizedInputHandler(
+    value => handleInputChange('address', value),
+    { maxLength: 500 }
+  );
+  const handlePostalCodeChange = createSanitizedInputHandler(
+    value => handleInputChange('postalCode', value),
+    { maxLength: 20, preserveWhitespace: false }
+  );
+  const handleCityChange = createSanitizedInputHandler(
+    value => handleInputChange('city', value),
+    { maxLength: 100 }
+  );
+  const handleEmailChange = createSanitizedInputHandler(
+    value => handleInputChange('email', value),
+    { maxLength: 200, preserveWhitespace: false }
+  );
+  const handlePhoneChange = createSanitizedInputHandler(
+    value => handleInputChange('phoneNumber', value),
+    { maxLength: 50, preserveWhitespace: false }
+  );
+
   // Load existing company details on mount
   useEffect(() => {
     const loadCompanyDetails = async () => {
@@ -44,15 +86,17 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
         setLoading(false);
         return;
       }
-      
+
       setLoading(true);
       try {
         const docRef = doc(db, 'companyDetails', user.uid);
         const docSnap = await getDoc(docRef);
-        
+
         if (docSnap.exists()) {
           const data = docSnap.data() as CompanyDetails;
-          setCompanyDetails(data);
+          // Sanitize data when loading from database
+          const sanitizedData = sanitizeCompanyData(data);
+          setCompanyDetails(sanitizedData);
         }
       } catch (err) {
         if (process.env.NODE_ENV === 'development') {
@@ -72,7 +116,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
   const handleInputChange = (field: keyof CompanyDetails, value: string) => {
     setCompanyDetails(prev => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
     // Clear messages when user starts typing
     if (error) {
@@ -84,6 +128,19 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
   };
 
   const validateForm = (): boolean => {
+    // Validate input safety before processing
+    const inputs = Object.values(companyDetails);
+    const unsafeInputs = inputs.filter(
+      input => input && !validateInputSafety(input)
+    );
+
+    if (unsafeInputs.length > 0) {
+      setError(
+        'Wykryto potencjalnie niebezpieczne dane wejściowe. Proszę sprawdzić wprowadzone informacje.'
+      );
+      return false;
+    }
+
     if (!companyDetails.companyName.trim()) {
       setError('Nazwa firmy jest wymagana');
       return false;
@@ -141,16 +198,20 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
     setSuccess(null);
 
     try {
+      // Sanitize all data before saving
+      const sanitizedData = sanitizeCompanyData(companyDetails);
+
       const docRef = doc(db, 'companyDetails', user.uid);
       await setDoc(docRef, {
-        ...companyDetails,
-        userID: user.uid
+        ...sanitizedData,
+        userID: user.uid,
       });
       const successMessage = 'Dane firmy zapisane pomyślnie!';
       setSuccess(successMessage);
       onSuccess?.(successMessage);
     } catch (err) {
-      const errorMessage = 'Nie udało się zapisać danych firmy. Spróbuj ponownie.';
+      const errorMessage =
+        'Nie udało się zapisać danych firmy. Spróbuj ponownie.';
       setError(errorMessage);
       onError?.(errorMessage);
     } finally {
@@ -171,7 +232,9 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
     <div className="bg-white shadow rounded-lg p-6">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-800">Dane Firmy</h2>
-        <p className="text-gray-600 mt-1">Zarządzaj informacjami o swojej firmie</p>
+        <p className="text-gray-600 mt-1">
+          Zarządzaj informacjami o swojej firmie
+        </p>
       </div>
 
       {error && (
@@ -195,7 +258,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="text"
               value={companyDetails.companyName}
-              onChange={(e) => handleInputChange('companyName', e.target.value)}
+              onChange={handleCompanyNameChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -208,7 +271,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="text"
               value={companyDetails.numberNIP}
-              onChange={(e) => handleInputChange('numberNIP', e.target.value)}
+              onChange={handleNIPChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -221,7 +284,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="text"
               value={companyDetails.numberREGON}
-              onChange={(e) => handleInputChange('numberREGON', e.target.value)}
+              onChange={handleREGONChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -234,7 +297,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="text"
               value={companyDetails.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
+              onChange={handleAddressChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -247,7 +310,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="text"
               value={companyDetails.postalCode}
-              onChange={(e) => handleInputChange('postalCode', e.target.value)}
+              onChange={handlePostalCodeChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -260,7 +323,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="text"
               value={companyDetails.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
+              onChange={handleCityChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -273,7 +336,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="email"
               value={companyDetails.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
+              onChange={handleEmailChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -286,7 +349,7 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
             <input
               type="tel"
               value={companyDetails.phoneNumber}
-              onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+              onChange={handlePhoneChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               required
             />
@@ -314,4 +377,4 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({ onSuccess, onEr
   );
 };
 
-export default CompanyDetailsForm; 
+export default CompanyDetailsForm;

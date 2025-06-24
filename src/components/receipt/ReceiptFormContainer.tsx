@@ -170,7 +170,7 @@ const ReceiptFormContainer: React.FC = () => {
       } else {
         // Create new receipt
         if (isOffline) {
-          const tempId = addOfflineReceipt(receiptData);
+          const tempId = await addOfflineReceipt(receiptData);
 
           if (tempId) {
             toast.success(
@@ -246,7 +246,7 @@ const ReceiptFormContainer: React.FC = () => {
         let savedReceipt;
 
         if (isOffline) {
-          const tempId = addOfflineReceipt(receiptData);
+          const tempId = await addOfflineReceipt(receiptData);
 
           if (!tempId) {
             toast.error('Nie udało się dodać kwitu offline.');

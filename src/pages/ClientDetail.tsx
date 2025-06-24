@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { usePDFReceipt } from '../components/PDFReceipt';
 import { Workbook } from 'exceljs';
+import { createSanitizedInputHandler } from '../utils/inputSanitizer';
 
 interface ReceiptItem {
   productId: string;
@@ -96,6 +97,12 @@ const ClientDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Create sanitized search input handler
+  const handleSearchChange = createSanitizedInputHandler(setSearchTerm, {
+    maxLength: 500,
+    preserveWhitespace: false,
+  });
 
   // Fetch client details
   const fetchClient = useCallback(async () => {
@@ -679,9 +686,9 @@ const ClientDetail: React.FC = () => {
             </div>
             <input
               type="text"
-              placeholder="Szukaj kwitów lub produktów..."
+              placeholder="Szukaj kwitów..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
             {searchTerm && (

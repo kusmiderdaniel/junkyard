@@ -62,8 +62,8 @@ export const generateReceiptNumber = async (
     }
 
     // Always check cached receipts (both online cached and offline created)
-    const cachedReceipts = offlineStorage.getCachedReceipts();
-    const pendingOperations = offlineStorage.getPendingOperations();
+    const cachedReceipts = await offlineStorage.getCachedReceipts();
+    const pendingOperations = await offlineStorage.getPendingOperations();
 
     // Check cached receipts from Firebase
     cachedReceipts.forEach(receipt => {

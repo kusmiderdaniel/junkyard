@@ -14,7 +14,9 @@ const OfflineData: React.FC = () => {
   const [cachedReceipts, setCachedReceipts] = useState<Receipt[]>([]);
   const [cachedProducts, setCachedProducts] = useState<Product[]>([]);
   const [cachedCategories, setCachedCategories] = useState<Category[]>([]);
-  const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
+  const [pendingOperations, setPendingOperations] = useState<
+    PendingOperation[]
+  >([]);
 
   useEffect(() => {
     if (user) {
@@ -22,18 +24,22 @@ const OfflineData: React.FC = () => {
     }
   }, [user]);
 
-  const loadCacheInfo = () => {
-    const info = offlineStorage.getCacheInfo();
+  const loadCacheInfo = async () => {
+    const info = await offlineStorage.getCacheInfo();
     setCacheInfo(info);
-    setCachedClients(offlineStorage.getCachedClients());
-    setCachedReceipts(offlineStorage.getCachedReceipts());
-    setCachedProducts(offlineStorage.getCachedProducts());
-    setCachedCategories(offlineStorage.getCachedCategories());
-    setPendingOperations(offlineStorage.getPendingOperations());
+    setCachedClients(await offlineStorage.getCachedClients());
+    setCachedReceipts(await offlineStorage.getCachedReceipts());
+    setCachedProducts(await offlineStorage.getCachedProducts());
+    setCachedCategories(await offlineStorage.getCachedCategories());
+    setPendingOperations(await offlineStorage.getPendingOperations());
   };
 
   const clearCache = () => {
-    if (window.confirm('Czy na pewno chcesz wyczyścić cache offline? Spowoduje to usunięcie wszystkich danych dostępnych offline.')) {
+    if (
+      window.confirm(
+        'Czy na pewno chcesz wyczyścić cache offline? Spowoduje to usunięcie wszystkich danych dostępnych offline.'
+      )
+    ) {
       offlineStorage.clearCache();
       loadCacheInfo();
     }
@@ -50,7 +56,9 @@ const OfflineData: React.FC = () => {
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Zaloguj się, aby wyświetlić dane offline.</p>
+        <p className="text-gray-500">
+          Zaloguj się, aby wyświetlić dane offline.
+        </p>
       </div>
     );
   }
@@ -60,7 +68,9 @@ const OfflineData: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Dane Offline</h1>
         <div className="flex items-center space-x-2">
-          <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div
+            className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}
+          ></div>
           <span className="text-sm font-medium text-gray-600">
             {isOnline ? 'Online' : 'Offline'}
           </span>
@@ -70,11 +80,22 @@ const OfflineData: React.FC = () => {
       {isOffline && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center">
-            <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-5 h-5 text-blue-600 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <p className="text-blue-800">
-              Jesteś w trybie offline. Poniżej widzisz dane zapisane lokalnie, które są dostępne bez połączenia z internetem.
+              Jesteś w trybie offline. Poniżej widzisz dane zapisane lokalnie,
+              które są dostępne bez połączenia z internetem.
             </p>
           </div>
         </div>
@@ -82,36 +103,58 @@ const OfflineData: React.FC = () => {
 
       {/* Cache Information */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Informacje o Cache</h2>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Informacje o Cache
+        </h2>
         {cacheInfo ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">Ostatnia synchronizacja</h3>
-              <p className="text-lg font-semibold text-gray-900">{cacheInfo.lastSync}</p>
+              <h3 className="text-sm font-medium text-gray-600">
+                Ostatnia synchronizacja
+              </h3>
+              <p className="text-lg font-semibold text-gray-900">
+                {cacheInfo.lastSync}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-gray-600">Klienci</h3>
-              <p className="text-lg font-semibold text-gray-900">{cacheInfo.clientsCount}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {cacheInfo.clientsCount}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-gray-600">Kwity</h3>
-              <p className="text-lg font-semibold text-gray-900">{cacheInfo.receiptsCount}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {cacheInfo.receiptsCount}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-gray-600">Produkty</h3>
-              <p className="text-lg font-semibold text-gray-900">{cacheInfo.productsCount || 0}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {cacheInfo.productsCount || 0}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-sm font-medium text-gray-600">Kategorie</h3>
-              <p className="text-lg font-semibold text-gray-900">{cacheInfo.categoriesCount || 0}</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {cacheInfo.categoriesCount || 0}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">Oczekujące operacje</h3>
-              <p className="text-lg font-semibold text-gray-900">{cacheInfo.pendingOperationsCount || 0}</p>
+              <h3 className="text-sm font-medium text-gray-600">
+                Oczekujące operacje
+              </h3>
+              <p className="text-lg font-semibold text-gray-900">
+                {cacheInfo.pendingOperationsCount || 0}
+              </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-600">Rozmiar cache</h3>
-              <p className="text-lg font-semibold text-gray-900">{formatBytes(cacheInfo.storageSize)}</p>
+              <h3 className="text-sm font-medium text-gray-600">
+                Rozmiar cache
+              </h3>
+              <p className="text-lg font-semibold text-gray-900">
+                {formatBytes(cacheInfo.storageSize)}
+              </p>
             </div>
           </div>
         ) : (
@@ -131,7 +174,9 @@ const OfflineData: React.FC = () => {
               disabled={isSyncing}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSyncing ? 'Synchronizowanie...' : `Synchronizuj (${pendingOperationsCount})`}
+              {isSyncing
+                ? 'Synchronizowanie...'
+                : `Synchronizuj (${pendingOperationsCount})`}
             </button>
           )}
           <button
@@ -147,9 +192,11 @@ const OfflineData: React.FC = () => {
       {pendingOperations.length > 0 && (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">Oczekujące Operacje</h2>
+            <h2 className="text-xl font-semibold text-gray-800">
+              Oczekujące Operacje
+            </h2>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -169,19 +216,23 @@ const OfflineData: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {pendingOperations.map((operation) => (
+                {pendingOperations.map(operation => (
                   <tr key={operation.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        operation.type === 'CREATE_CLIENT' 
-                          ? 'bg-blue-100 text-blue-800'
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          operation.type === 'CREATE_CLIENT'
+                            ? 'bg-blue-100 text-blue-800'
+                            : operation.type === 'CREATE_RECEIPT'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {operation.type === 'CREATE_CLIENT'
+                          ? 'Nowy Klient'
                           : operation.type === 'CREATE_RECEIPT'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {operation.type === 'CREATE_CLIENT' ? 'Nowy Klient' :
-                         operation.type === 'CREATE_RECEIPT' ? 'Nowy Kwit' :
-                         operation.type}
+                            ? 'Nowy Kwit'
+                            : operation.type}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -191,11 +242,13 @@ const OfflineData: React.FC = () => {
                       {operation.retryCount} / 3
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {operation.type === 'CREATE_CLIENT' && operation.data?.name ? 
-                        `Klient: ${operation.data.name}` :
-                       operation.type === 'CREATE_RECEIPT' && operation.data?.number ?
-                        `Kwit: ${operation.data.number}` :
-                        'Szczegóły niedostępne'}
+                      {operation.type === 'CREATE_CLIENT' &&
+                      operation.data?.name
+                        ? `Klient: ${operation.data.name}`
+                        : operation.type === 'CREATE_RECEIPT' &&
+                            operation.data?.number
+                          ? `Kwit: ${operation.data.number}`
+                          : 'Szczegóły niedostępne'}
                     </td>
                   </tr>
                 ))}
@@ -208,9 +261,11 @@ const OfflineData: React.FC = () => {
       {/* Cached Clients */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Klienci (Cache)</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Klienci (Cache)
+          </h2>
         </div>
-        
+
         {cachedClients.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -228,7 +283,7 @@ const OfflineData: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {cachedClients.slice(0, 10).map((client) => (
+                {cachedClients.slice(0, 10).map(client => (
                   <tr key={client.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {client.name}
@@ -259,9 +314,11 @@ const OfflineData: React.FC = () => {
       {/* Cached Receipts */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Ostatnie Kwity (Cache)</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Ostatnie Kwity (Cache)
+          </h2>
         </div>
-        
+
         {cachedReceipts.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -282,8 +339,10 @@ const OfflineData: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {cachedReceipts.slice(0, 10).map((receipt) => {
-                  const client = cachedClients.find(c => c.id === receipt.clientId);
+                {cachedReceipts.slice(0, 10).map(receipt => {
+                  const client = cachedClients.find(
+                    c => c.id === receipt.clientId
+                  );
                   return (
                     <tr key={receipt.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -293,12 +352,14 @@ const OfflineData: React.FC = () => {
                         {new Date(receipt.date).toLocaleDateString('pl-PL')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {client ? client.name : receipt.clientName || 'Nieznany Klient'}
+                        {client
+                          ? client.name
+                          : receipt.clientName || 'Nieznany Klient'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {new Intl.NumberFormat('pl-PL', {
                           style: 'currency',
-                          currency: 'PLN'
+                          currency: 'PLN',
                         }).format(receipt.totalAmount)}
                       </td>
                     </tr>
@@ -322,9 +383,11 @@ const OfflineData: React.FC = () => {
       {/* Cached Products */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Produkty (Cache)</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Produkty (Cache)
+          </h2>
         </div>
-        
+
         {cachedProducts.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -348,8 +411,10 @@ const OfflineData: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {cachedProducts.slice(0, 10).map((product) => {
-                  const category = cachedCategories.find(c => c.id === product.categoryId);
+                {cachedProducts.slice(0, 10).map(product => {
+                  const category = cachedCategories.find(
+                    c => c.id === product.categoryId
+                  );
                   return (
                     <tr key={product.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -364,13 +429,13 @@ const OfflineData: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {new Intl.NumberFormat('pl-PL', {
                           style: 'currency',
-                          currency: 'PLN'
+                          currency: 'PLN',
                         }).format(product.buy_price)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                         {new Intl.NumberFormat('pl-PL', {
                           style: 'currency',
-                          currency: 'PLN'
+                          currency: 'PLN',
                         }).format(product.sell_price)}
                       </td>
                     </tr>
@@ -394,9 +459,11 @@ const OfflineData: React.FC = () => {
       {/* Cached Categories */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">Kategorie (Cache)</h2>
+          <h2 className="text-xl font-semibold text-gray-800">
+            Kategorie (Cache)
+          </h2>
         </div>
-        
+
         {cachedCategories.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -411,8 +478,10 @@ const OfflineData: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {cachedCategories.map((category) => {
-                  const productCount = cachedProducts.filter(p => p.categoryId === category.id).length;
+                {cachedCategories.map(category => {
+                  const productCount = cachedProducts.filter(
+                    p => p.categoryId === category.id
+                  ).length;
                   return (
                     <tr key={category.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -437,4 +506,4 @@ const OfflineData: React.FC = () => {
   );
 };
 
-export default OfflineData; 
+export default OfflineData;

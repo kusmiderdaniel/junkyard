@@ -5,6 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { normalizePolishText, createSearchableText } from '../utils/textUtils';
+import {
+  sanitizeClientData,
+  createSanitizedInputHandler,
+  validateInputSafety,
+} from '../utils/inputSanitizer';
 import toast from 'react-hot-toast';
 
 type Client = {
@@ -43,13 +48,53 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+  // Create sanitized input handlers
+  const handleNameChange = createSanitizedInputHandler(setName, {
+    maxLength: 200,
+  });
+  const handleAddressChange = createSanitizedInputHandler(setAddress, {
+    maxLength: 500,
+  });
+  const handleDocumentNumberChange = createSanitizedInputHandler(
+    setDocumentNumber,
+    {
+      maxLength: 50,
+      preserveWhitespace: false,
+    }
+  );
+  const handlePostalCodeChange = createSanitizedInputHandler(setPostalCode, {
+    maxLength: 20,
+    preserveWhitespace: false,
+  });
+  const handleCityChange = createSanitizedInputHandler(setCity, {
+    maxLength: 100,
+  });
+
   useEffect(() => {
     if (initialData) {
-      setName(initialData.name);
-      setAddress(initialData.address);
-      setDocumentNumber(initialData.documentNumber);
-      setPostalCode(initialData.postalCode);
-      setCity(initialData.city);
+      // Sanitize initial data when setting state
+      setName(
+        sanitizeClientData({ ...initialData, name: initialData.name }).name
+      );
+      setAddress(
+        sanitizeClientData({ ...initialData, address: initialData.address })
+          .address
+      );
+      setDocumentNumber(
+        sanitizeClientData({
+          ...initialData,
+          documentNumber: initialData.documentNumber,
+        }).documentNumber
+      );
+      setPostalCode(
+        sanitizeClientData({
+          ...initialData,
+          postalCode: initialData.postalCode,
+        }).postalCode
+      );
+      setCity(
+        sanitizeClientData({ ...initialData, city: initialData.city }).city
+      );
     } else {
       setName('');
       setAddress('');
@@ -62,6 +107,20 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate input safety before processing
+    const inputs = [name, address, documentNumber, postalCode, city];
+    const unsafeInputs = inputs.filter(
+      input => input && !validateInputSafety(input)
+    );
+
+    if (unsafeInputs.length > 0) {
+      setError(
+        'Wykryto potencjalnie niebezpieczne dane wejściowe. Proszę sprawdzić wprowadzone informacje.'
+      );
+      return;
+    }
+
     if (!name.trim()) {
       setError('Pole nazwiska i imienia jest wymagane.');
       return;
@@ -74,11 +133,23 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
     setError(null);
 
     try {
-      // Create fullAddress field
+      // Sanitize all client data before processing
+      const rawClientData = {
+        name: name.trim(),
+        address: address.trim(),
+        documentNumber: documentNumber.trim(),
+        postalCode: postalCode.trim(),
+        city: city.trim(),
+        fullAddress: '', // Will be calculated below
+      };
+
+      const sanitizedData = sanitizeClientData(rawClientData);
+
+      // Create fullAddress field with sanitized data
       const addressParts = [];
-      if (address.trim()) addressParts.push(address.trim());
-      if (postalCode.trim() || city.trim()) {
-        const locationPart = [postalCode.trim(), city.trim()]
+      if (sanitizedData.address) addressParts.push(sanitizedData.address);
+      if (sanitizedData.postalCode || sanitizedData.city) {
+        const locationPart = [sanitizedData.postalCode, sanitizedData.city]
           .filter(Boolean)
           .join(' ');
         if (locationPart) addressParts.push(locationPart);
@@ -86,11 +157,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       const fullAddress = addressParts.join(', ');
 
       const clientData = {
-        name: name.trim(),
-        address: address.trim(),
-        documentNumber: documentNumber.trim(),
-        postalCode: postalCode.trim(),
-        city: city.trim(),
+        ...sanitizedData,
         fullAddress: fullAddress,
       };
 
@@ -105,7 +172,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
         // Add mode - create new client
         if (isOffline) {
           // Add to offline queue
-          const tempId = addOfflineClient({
+          const tempId = await addOfflineClient({
             ...clientData,
             name_lowercase: clientData.name.toLowerCase(),
             name_normalized: normalizePolishText(clientData.name),
@@ -281,7 +348,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   type="text"
                   placeholder="Wprowadź nazwisko i imię klienta"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={handleNameChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                   required
                 />
@@ -313,7 +380,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   type="text"
                   placeholder="Wprowadź numer dokumentu"
                   value={documentNumber}
-                  onChange={e => setDocumentNumber(e.target.value)}
+                  onChange={handleDocumentNumberChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -344,7 +411,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   type="text"
                   placeholder="Wprowadź adres klienta"
                   value={address}
-                  onChange={e => setAddress(e.target.value)}
+                  onChange={handleAddressChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -381,7 +448,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   type="text"
                   placeholder="Wprowadź kod pocztowy"
                   value={postalCode}
-                  onChange={e => setPostalCode(e.target.value)}
+                  onChange={handlePostalCodeChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -418,7 +485,7 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
                   type="text"
                   placeholder="Wprowadź miasto"
                   value={city}
-                  onChange={e => setCity(e.target.value)}
+                  onChange={handleCityChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all duration-200 placeholder-gray-400"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">

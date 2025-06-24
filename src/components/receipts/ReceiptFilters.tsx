@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createSanitizedInputHandler } from '../../utils/inputSanitizer';
 
 interface ReceiptFiltersProps {
   user: any;
@@ -40,20 +41,38 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
   onExportToExcel,
   onSearch,
   onClearSearch,
-  activeSearchTerm
+  activeSearchTerm,
 }) => {
   const navigate = useNavigate();
+
+  // Create sanitized search input handler
+  const handleSearchChange = createSanitizedInputHandler(setSearchTerm, {
+    maxLength: 500,
+    preserveWhitespace: false,
+  });
 
   const formatMonthLabel = (monthKey: string) => {
     const [year, month] = monthKey.split('-');
     const monthNames = [
-      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+      'Styczeń',
+      'Luty',
+      'Marzec',
+      'Kwiecień',
+      'Maj',
+      'Czerwiec',
+      'Lipiec',
+      'Sierpień',
+      'Wrzesień',
+      'Październik',
+      'Listopad',
+      'Grudzień',
     ];
     return `${monthNames[parseInt(month) - 1]} ${year}`;
   };
 
-  const handleItemsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleItemsPerPageChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
     const newValue = parseInt(event.target.value);
     setItemsPerPage(newValue);
   };
@@ -83,14 +102,14 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
           disabled={!user || loading || filteredReceiptsLength === 0}
           className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          <svg 
-            width="16" 
-            height="16" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
             strokeLinejoin="round"
           >
             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
@@ -104,14 +123,14 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
           disabled={!user || loading || filteredReceiptsLength === 0}
           className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          <svg 
-            width="16" 
-            height="16" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
             strokeLinejoin="round"
           >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -122,7 +141,7 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
           Eksportuj do Excela
         </button>
       </div>
-      
+
       {/* Search, Filter, and Pagination Bar */}
       <div className="mb-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
         {/* Left side: Search and Filter */}
@@ -130,17 +149,17 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
           {/* Search Box */}
           <div className="relative flex-1 max-w-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg 
-                className="h-5 w-5 text-gray-400" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="h-5 w-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
             </div>
@@ -148,8 +167,8 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
               type="text"
               placeholder="Szukaj kwitów, klientów lub produktów..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+              onChange={handleSearchChange}
+              onKeyDown={e => e.key === 'Enter' && onSearch()}
               disabled={!user}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50"
             />
@@ -158,17 +177,17 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
                 onClick={() => setSearchTerm('')}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
               >
-                <svg 
-                  className="h-4 w-4 text-gray-400 hover:text-gray-600" 
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  className="h-4 w-4 text-gray-400 hover:text-gray-600"
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M6 18L18 6M6 6l12 12" 
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
                   />
                 </svg>
               </button>
@@ -188,7 +207,7 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
           <div className="relative">
             <select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              onChange={e => setSelectedMonth(e.target.value)}
               className="w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
             >
               <option value="">Wszystkie miesiące</option>
@@ -216,7 +235,12 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
         <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
           {/* Items per page selector */}
           <div className="flex items-center gap-2">
-            <label htmlFor="items-per-page" className="text-sm text-gray-700 whitespace-nowrap">Pokaż:</label>
+            <label
+              htmlFor="items-per-page"
+              className="text-sm text-gray-700 whitespace-nowrap"
+            >
+              Pokaż:
+            </label>
             <select
               id="items-per-page"
               value={itemsPerPage}
@@ -261,7 +285,9 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-blue-800">Aktywne filtry:</span>
+              <span className="text-sm font-medium text-blue-800">
+                Aktywne filtry:
+              </span>
               {activeSearchTerm && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   Wyszukiwanie: "{activeSearchTerm}"
@@ -286,4 +312,4 @@ const ReceiptFilters: React.FC<ReceiptFiltersProps> = ({
   );
 };
 
-export default ReceiptFilters; 
+export default ReceiptFilters;
