@@ -338,7 +338,7 @@ const Statistics: React.FC = () => {
         toast.error('Brak danych do eksportu.');
         return;
       }
-
+      
       // Lazy load Excel export utility
       const { ExcelExportUtility } = await import('../utils/excelExport');
 
