@@ -25,6 +25,7 @@ import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { offlineStorage } from '../utils/offlineStorage';
 import { Client as BaseClient } from '../types/receipt';
+import { createSanitizedInputHandler } from '../utils/inputSanitizer';
 
 type Client = BaseClient & {
   name_lowercase?: string;
@@ -67,6 +68,12 @@ const Clients: React.FC = () => {
     name: string;
   } | null>(null);
 
+  // Create sanitized search input handler
+  const handleSearchChange = createSanitizedInputHandler(setSearchTerm, {
+    maxLength: 500,
+    preserveWhitespace: false,
+  });
+
   const fetchReceiptCounts = useCallback(async () => {
     if (!user) return;
 
@@ -101,7 +108,7 @@ const Clients: React.FC = () => {
     try {
       // If offline, use cached data
       if (isOffline) {
-        const cachedClients = offlineStorage.getCachedClients();
+        const cachedClients = await offlineStorage.getCachedClients();
 
         let allClients = cachedClients;
 
@@ -251,7 +258,7 @@ const Clients: React.FC = () => {
           );
 
           // Cache the clients for offline use
-          offlineStorage.cacheClients(allClients);
+          await offlineStorage.cacheClients(allClients);
 
           const filteredClients = allClients.filter(client => {
             const normalizedClientName = normalizePolishText(client.name);
@@ -312,7 +319,7 @@ const Clients: React.FC = () => {
         );
 
         // Cache the clients for offline use
-        offlineStorage.cacheClients(clientsData);
+        await offlineStorage.cacheClients(clientsData);
 
         const lastDoc =
           documentSnapshots.docs[documentSnapshots.docs.length - 1];
@@ -329,7 +336,7 @@ const Clients: React.FC = () => {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
         console.warn('Online fetch failed, trying cached data:', error);
-        const cachedClients = offlineStorage.getCachedClients();
+        const cachedClients = await offlineStorage.getCachedClients();
         if (cachedClients.length > 0) {
           setClients(cachedClients.slice(0, itemsPerPage));
           setTotalPages(Math.ceil(cachedClients.length / itemsPerPage));
@@ -551,7 +558,7 @@ const Clients: React.FC = () => {
           type="text"
           placeholder="Szukaj po nazwie, adresie lub numerze dokumentu..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={handleSearchChange}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
           disabled={!user}
           className="w-full md:w-1/3 px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-l-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50"

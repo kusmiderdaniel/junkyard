@@ -62,53 +62,54 @@ const Products: React.FC = () => {
     try {
       // If offline, use cached data
       if (isOffline) {
-        const cachedCategories = offlineStorage.getCachedCategories();
-        const cachedProducts = offlineStorage.getCachedProducts();
+        const cachedCategories = await offlineStorage.getCachedCategories();
+        const cachedProducts = await offlineStorage.getCachedProducts();
 
         setCategories(cachedCategories);
         setProducts(cachedProducts);
         return;
       }
 
-      // Online mode - fetch from Firebase
-      // Fetch categories for current user
-      const categoriesQuery = query(
-        collection(db, 'categories'),
-        where('userID', '==', user.uid)
-      );
-      const categoriesSnapshot = await getDocs(categoriesQuery);
+      // Online mode - fetch from Firebase in parallel for better performance
+      const [categoriesSnapshot, productsSnapshot] = await Promise.all([
+        getDocs(
+          query(collection(db, 'categories'), where('userID', '==', user.uid))
+        ),
+        getDocs(
+          query(collection(db, 'products'), where('userID', '==', user.uid))
+        ),
+      ]);
+
       const categoriesData = categoriesSnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name as string,
       })) as Category[];
 
-      // Cache categories for offline use
-      offlineStorage.cacheCategories(categoriesData);
-      setCategories(categoriesData);
-
-      // Fetch products for current user
-      const productsQuery = query(
-        collection(db, 'products'),
-        where('userID', '==', user.uid)
-      );
-      const productsSnapshot = await getDocs(productsQuery);
       const productsData = productsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       })) as Product[];
 
-      // Cache products for offline use
-      offlineStorage.cacheProducts(productsData);
+      // Update state
+      setCategories(categoriesData);
       setProducts(productsData);
+
+      // Cache in parallel for offline use
+      await Promise.all([
+        offlineStorage.cacheCategories(categoriesData),
+        offlineStorage.cacheProducts(productsData),
+      ]);
     } catch (error) {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
-        console.warn(
-          'Online products/categories fetch failed, trying cached data:',
-          error
-        );
-        const cachedCategories = offlineStorage.getCachedCategories();
-        const cachedProducts = offlineStorage.getCachedProducts();
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online products/categories fetch failed, trying cached data:',
+            error
+          );
+        }
+        const cachedCategories = await offlineStorage.getCachedCategories();
+        const cachedProducts = await offlineStorage.getCachedProducts();
 
         if (cachedCategories.length > 0 || cachedProducts.length > 0) {
           setCategories(cachedCategories);

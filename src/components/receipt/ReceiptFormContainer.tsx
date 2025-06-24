@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
   collection,
   getDocs,
@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import { db } from '../../firebase';
 import { useReceiptForm } from '../../hooks/useReceiptForm';
+import { useRateLimitedOperations } from '../../utils/rateLimitedFirebase';
 import ReceiptFormHeader, { ReceiptFormHeaderRef } from './ReceiptFormHeader';
 import ReceiptItemsList from './ReceiptItemsList';
 import ReceiptSummary from './ReceiptSummary';
@@ -20,6 +21,11 @@ import LoadingSpinner from '../LoadingSpinner';
 
 const ReceiptFormContainer: React.FC = () => {
   const receiptFormHeaderRef = useRef<ReceiptFormHeaderRef>(null);
+
+  // Rate limiting for operations
+  const rateLimitedOps = useRateLimitedOperations(
+    () => user?.uid || 'anonymous'
+  );
 
   const {
     // State
@@ -69,8 +75,13 @@ const ReceiptFormContainer: React.FC = () => {
     generateReceiptNumber,
   } = useReceiptForm();
 
-  // Initialize component
+  // Store initialization status to prevent re-runs
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize component only once
   useEffect(() => {
+    if (isInitialized) return;
+
     const initializeComponent = async () => {
       try {
         await fetchData();
@@ -80,6 +91,7 @@ const ReceiptFormContainer: React.FC = () => {
         } else {
           initializeItems();
         }
+        setIsInitialized(true);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           console.error('Error initializing component:', error);
@@ -88,7 +100,7 @@ const ReceiptFormContainer: React.FC = () => {
     };
 
     initializeComponent();
-  }, [fetchData, loadReceiptData, initializeItems, isEditing]);
+  }, [fetchData, loadReceiptData, initializeItems, isEditing, isInitialized]);
 
   // Reset form for new receipt
   const resetFormForNewReceipt = useCallback(async () => {
@@ -104,8 +116,16 @@ const ReceiptFormContainer: React.FC = () => {
     initializeItems();
     setShowValidationErrors(false);
 
-    // Generate new receipt number for current date
-    const newReceiptNumber = await generateReceiptNumber(date);
+    // Set date to today's date
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayString = `${year}-${month}-${day}`;
+    handleDateChange(todayString);
+
+    // Generate new receipt number for today's date
+    const newReceiptNumber = await generateReceiptNumber(todayString);
     setReceiptNumber(newReceiptNumber);
 
     // Focus the client selector with multiple attempts to ensure it works
@@ -123,7 +143,7 @@ const ReceiptFormContainer: React.FC = () => {
     initializeItems,
     setShowValidationErrors,
     generateReceiptNumber,
-    date,
+    handleDateChange,
     setReceiptNumber,
     setSelectedClient,
   ]);
@@ -142,6 +162,18 @@ const ReceiptFormContainer: React.FC = () => {
     // Editing not supported offline
     if (isEditing && isOffline) {
       toast.error('Edytowanie kwitów nie jest dostępne w trybie offline.');
+      return;
+    }
+
+    // Check rate limits
+    const rateLimit = isEditing
+      ? rateLimitedOps.checkReceiptUpdate()
+      : rateLimitedOps.checkReceiptCreate();
+
+    if (!rateLimit.allowed) {
+      toast.error(
+        rateLimit.message || 'Zbyt wiele operacji. Spróbuj ponownie później.'
+      );
       return;
     }
 
@@ -170,7 +202,7 @@ const ReceiptFormContainer: React.FC = () => {
       } else {
         // Create new receipt
         if (isOffline) {
-          const tempId = addOfflineReceipt(receiptData);
+          const tempId = await addOfflineReceipt(receiptData);
 
           if (tempId) {
             toast.success(
@@ -230,6 +262,26 @@ const ReceiptFormContainer: React.FC = () => {
         return;
       }
 
+      // Check rate limits for receipt creation and PDF generation
+      const receiptLimit = rateLimitedOps.checkReceiptCreate();
+      const pdfLimit = rateLimitedOps.checkPDFGenerate();
+
+      if (!receiptLimit.allowed) {
+        toast.error(
+          receiptLimit.message ||
+            'Zbyt wiele tworzonych kwitów. Spróbuj ponownie później.'
+        );
+        return;
+      }
+
+      if (!pdfLimit.allowed) {
+        toast.error(
+          pdfLimit.message ||
+            'Zbyt wiele generowanych PDF. Spróbuj ponownie później.'
+        );
+        return;
+      }
+
       setPrintingAndContinuing(true);
       try {
         const localDate = new Date();
@@ -246,7 +298,7 @@ const ReceiptFormContainer: React.FC = () => {
         let savedReceipt;
 
         if (isOffline) {
-          const tempId = addOfflineReceipt(receiptData);
+          const tempId = await addOfflineReceipt(receiptData);
 
           if (!tempId) {
             toast.error('Nie udało się dodać kwitu offline.');
@@ -334,6 +386,7 @@ const ReceiptFormContainer: React.FC = () => {
       setShowValidationErrors,
       setPrintingAndContinuing,
       setReceiptNumber,
+      rateLimitedOps,
     ]
   );
 

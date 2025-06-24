@@ -3,7 +3,7 @@ import { db } from '../../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { pdf } from '@react-pdf/renderer';
 import toast from 'react-hot-toast';
-import { Workbook } from 'exceljs';
+// ExcelJS will be lazy loaded
 import ReceiptsSummaryDocument from './ReceiptsSummaryDocument';
 import {
   Receipt,
@@ -248,120 +248,47 @@ export const useReceiptExportActions = ({
         return;
       }
 
-      // Create workbook and worksheet
-      const workbook = new Workbook();
-      const worksheet = workbook.addWorksheet('Szczegóły kwitów');
+      // Lazy load Excel export utility
+      const { ExcelExportUtility } = await import('../../utils/excelExport');
 
-      const currentDate = new Date().toLocaleDateString('pl-PL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-
-      let currentRow = 1;
-
-      // Add report header
-      worksheet.getCell(`A${currentRow}`).value =
-        `Raport wygenerowany: ${currentDate}`;
-      worksheet.getCell(`A${currentRow}`).font = { bold: true };
-      currentRow += 2;
-
-      // Add filter context
-      if (selectedMonth || searchTerm) {
-        worksheet.getCell(`A${currentRow}`).value = 'Zastosowane filtry:';
-        worksheet.getCell(`A${currentRow}`).font = { bold: true };
-        currentRow++;
-
-        if (selectedMonth) {
-          const monthLabel = formatMonthLabel(selectedMonth);
-          worksheet.getCell(`A${currentRow}`).value =
-            `• Miesiąc: ${monthLabel}`;
-          currentRow++;
-        }
-
-        if (searchTerm) {
-          worksheet.getCell(`A${currentRow}`).value =
-            `• Wyszukiwanie: "${searchTerm}"`;
-          currentRow++;
-        }
-
-        currentRow++; // Extra spacing
-      } else {
-        worksheet.getCell(`A${currentRow}`).value = 'Filtry: Wszystkie kwity';
-        currentRow += 2;
+      // Prepare filters
+      const filters: Record<string, string> = {};
+      if (selectedMonth) {
+        const monthLabel = formatMonthLabel(selectedMonth);
+        filters['Miesiąc'] = monthLabel;
+      }
+      if (searchTerm) {
+        filters['Wyszukiwanie'] = `"${searchTerm}"`;
+      }
+      if (!selectedMonth && !searchTerm) {
+        filters['Zakres'] = 'Wszystkie kwity';
       }
 
-      worksheet.getCell(`A${currentRow}`).value =
-        `Łączna liczba pozycji: ${excelData.length}`;
-      currentRow += 3;
-
-      // Add table headers
-      const headers = [
-        'Numer kwitu',
-        'Data',
-        'Klient',
-        'Nazwa towaru',
-        'Kod towaru',
-        'Ilość',
-        'Jednostka',
-        'Cena zakupu',
-        'Wartość pozycji',
-      ];
-      const headerRow = worksheet.getRow(currentRow);
-      headerRow.values = headers;
-      headerRow.font = { bold: true };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF366092' },
+      // Prepare summary
+      const summary = {
+        'Łączna liczba pozycji': excelData.length.toString(),
       };
-      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      currentRow++;
 
-      // Add data rows
-      excelData.forEach(rowData => {
-        const row = worksheet.getRow(currentRow);
-        row.values = [
-          rowData['Numer kwitu'],
-          rowData['Data'],
-          rowData['Klient'],
-          rowData['Nazwa towaru'],
-          rowData['Kod towaru'],
-          rowData['Ilość'],
-          rowData['Jednostka'],
-          rowData['Cena zakupu'],
-          rowData['Wartość pozycji'],
-        ];
-        currentRow++;
+      // Export using the utility
+      await ExcelExportUtility.exportToExcel({
+        filename: 'kwity',
+        worksheetName: 'Szczegóły kwitów',
+        headers: [
+          'Numer kwitu',
+          'Data',
+          'Klient',
+          'Nazwa towaru',
+          'Kod towaru',
+          'Ilość',
+          'Jednostka',
+          'Cena zakupu',
+          'Wartość pozycji',
+        ],
+        data: excelData,
+        title: 'Raport wygenerowany',
+        filters,
+        summary,
       });
-
-      // Set column widths
-      worksheet.columns = [
-        { width: 15 }, // Numer kwitu
-        { width: 12 }, // Data
-        { width: 25 }, // Klient
-        { width: 30 }, // Nazwa towaru
-        { width: 15 }, // Kod towaru
-        { width: 10 }, // Ilość
-        { width: 10 }, // Jednostka
-        { width: 12 }, // Cena zakupu
-        { width: 15 }, // Wartość pozycji
-      ];
-
-      // Generate filename
-      const filename = `kwity.xlsx`;
-
-      // Download the file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       toast.error('Wystąpił błąd podczas eksportowania do Excel.');
     }

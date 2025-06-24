@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { db } from '../firebase';
 import {
   collection,
@@ -17,6 +17,7 @@ import {
 import { normalizePolishText } from '../utils/textUtils';
 import { useOfflineStatus } from './useOfflineStatus';
 import { offlineStorage } from '../utils/offlineStorage';
+import { syncService } from '../utils/syncService';
 import {
   Receipt,
   Client,
@@ -73,9 +74,10 @@ export const useReceiptData = ({
     if (!user) return;
 
     try {
-      // If offline, use cached data
-      if (isOffline) {
-        const cachedCompanyDetails = offlineStorage.getCachedCompanyDetails();
+      // If offline or sync in progress, use cached data only
+      if (isOffline || syncService.getIsSyncing()) {
+        const cachedCompanyDetails =
+          await offlineStorage.getCachedCompanyDetails();
         if (cachedCompanyDetails) {
           setCompanyDetails(cachedCompanyDetails);
         } else {
@@ -100,7 +102,7 @@ export const useReceiptData = ({
       if (docSnap.exists()) {
         const companyData = docSnap.data() as CompanyDetails;
         // Cache the company details for offline use
-        offlineStorage.cacheCompanyDetails(companyData);
+        await offlineStorage.cacheCompanyDetails(companyData);
         setCompanyDetails(companyData);
       } else {
         const defaultCompanyDetails = {
@@ -118,11 +120,14 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try cached data as fallback
       if (!isOffline) {
-        console.warn(
-          'Online company details fetch failed, trying cached data:',
-          error
-        );
-        const cachedCompanyDetails = offlineStorage.getCachedCompanyDetails();
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online company details fetch failed, trying cached data:',
+            error
+          );
+        }
+        const cachedCompanyDetails =
+          await offlineStorage.getCachedCompanyDetails();
         if (cachedCompanyDetails) {
           setCompanyDetails(cachedCompanyDetails);
         } else {
@@ -157,9 +162,9 @@ export const useReceiptData = ({
     if (!user) return;
 
     try {
-      // If offline, use cached data
-      if (isOffline) {
-        const cachedClients = offlineStorage.getCachedClients();
+      // If offline or sync in progress, use cached data only
+      if (isOffline || syncService.getIsSyncing()) {
+        const cachedClients = await offlineStorage.getCachedClients();
         setClients(cachedClients);
         return;
       }
@@ -175,15 +180,20 @@ export const useReceiptData = ({
         ...doc.data(),
       })) as Client[];
 
-      // Cache the clients for offline use
-      offlineStorage.cacheClients(clientsData);
+      // Merge the clients with existing cache to prevent duplicates
+      await offlineStorage.mergeClients(clientsData);
 
       setClients(clientsData);
     } catch (error) {
       // If online fetch fails, try cached data as fallback
       if (!isOffline) {
-        console.warn('Online client fetch failed, trying cached data:', error);
-        const cachedClients = offlineStorage.getCachedClients();
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online client fetch failed, trying cached data:',
+            error
+          );
+        }
+        const cachedClients = await offlineStorage.getCachedClients();
         if (cachedClients.length > 0) {
           setClients(cachedClients);
         } else {
@@ -200,9 +210,9 @@ export const useReceiptData = ({
     if (!user) return;
 
     try {
-      // If offline, generate months from cached receipts
-      if (isOffline) {
-        const cachedReceipts = offlineStorage.getCachedReceipts();
+      // If offline or sync in progress, generate months from cached receipts
+      if (isOffline || syncService.getIsSyncing()) {
+        const cachedReceipts = await offlineStorage.getCachedReceipts();
         const months = new Set<string>();
 
         cachedReceipts.forEach(receipt => {
@@ -241,11 +251,13 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try to generate from cached data
       if (!isOffline) {
-        console.warn(
-          'Online available months fetch failed, trying cached data:',
-          error
-        );
-        const cachedReceipts = offlineStorage.getCachedReceipts();
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(
+            'Online available months fetch failed, trying cached data:',
+            error
+          );
+        }
+        const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           const months = new Set<string>();
 
@@ -273,9 +285,9 @@ export const useReceiptData = ({
 
     setLoading(true);
     try {
-      // If offline, use cached data
-      if (isOffline) {
-        const cachedReceipts = offlineStorage.getCachedReceipts();
+      // If offline or sync in progress, use cached data
+      if (isOffline || syncService.getIsSyncing()) {
+        const cachedReceipts = await offlineStorage.getCachedReceipts();
 
         let filteredReceipts = [...cachedReceipts];
 
@@ -302,7 +314,7 @@ export const useReceiptData = ({
         // Apply search filter if active
         if (activeSearchTerm) {
           const normalizedSearchTerm = normalizePolishText(activeSearchTerm);
-          const cachedClients = offlineStorage.getCachedClients();
+          const cachedClients = await offlineStorage.getCachedClients();
 
           // Find matching client IDs
           const matchingClientIds = new Set<string>();
@@ -473,8 +485,8 @@ export const useReceiptData = ({
             date: doc.data().date.toDate(),
           })) as Receipt[];
 
-          // Cache the receipts for offline use
-          offlineStorage.cacheReceipts(allReceipts);
+          // Merge the receipts with existing cache to prevent duplicates
+          await offlineStorage.mergeReceipts(allReceipts);
 
           // Client-side filtering for comprehensive search
           const filteredReceipts = allReceipts.filter(receipt => {
@@ -626,8 +638,8 @@ export const useReceiptData = ({
           date: doc.data().date.toDate(),
         })) as Receipt[];
 
-        // Cache the receipts for offline use
-        offlineStorage.cacheReceipts(receiptsData);
+        // Merge the receipts with existing cache to prevent duplicates
+        await offlineStorage.mergeReceipts(receiptsData);
 
         setReceipts(receiptsData);
 
@@ -639,7 +651,7 @@ export const useReceiptData = ({
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
         console.warn('Online receipt fetch failed, trying cached data:', error);
-        const cachedReceipts = offlineStorage.getCachedReceipts();
+        const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           setReceipts(cachedReceipts.slice(0, itemsPerPage));
           setTotalPages(Math.ceil(cachedReceipts.length / itemsPerPage));
@@ -673,6 +685,35 @@ export const useReceiptData = ({
     },
     [clients]
   );
+
+  // Listen for sync completion to refresh data
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const handleSyncCompleted = async () => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📡 Sync completed - refreshing data...');
+      }
+
+      // Force refresh all data after sync with longer delay
+      timeoutId = setTimeout(async () => {
+        if (user && !syncService.getIsSyncing()) {
+          await fetchClients();
+          await fetchReceipts();
+          await fetchAvailableMonths();
+        }
+      }, 1000); // Longer delay to ensure sync is fully complete
+    };
+
+    window.addEventListener('sync-completed', handleSyncCompleted);
+
+    return () => {
+      window.removeEventListener('sync-completed', handleSyncCompleted);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [user, fetchClients, fetchReceipts, fetchAvailableMonths]);
 
   return {
     receipts,

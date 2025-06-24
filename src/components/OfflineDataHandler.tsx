@@ -38,7 +38,7 @@ const OfflineDataHandler: React.FC = () => {
         id: doc.id,
         ...doc.data(),
       })) as Client[];
-      offlineStorage.cacheClients(clients);
+      await offlineStorage.cacheClients(clients);
 
       // Cache recent receipts (last 100)
       const receiptsQuery = query(
@@ -51,14 +51,14 @@ const OfflineDataHandler: React.FC = () => {
         ...doc.data(),
         date: doc.data().date.toDate(),
       })) as Receipt[];
-      offlineStorage.cacheReceipts(receipts);
+      await offlineStorage.cacheReceipts(receipts);
 
       // Cache company details
       const companyDocRef = doc(db, 'companyDetails', user.uid);
       const companyDoc = await getDoc(companyDocRef);
       if (companyDoc.exists()) {
         const companyDetails = companyDoc.data() as CompanyDetails;
-        offlineStorage.cacheCompanyDetails(companyDetails);
+        await offlineStorage.cacheCompanyDetails(companyDetails);
       }
 
       // Cache products
@@ -71,7 +71,7 @@ const OfflineDataHandler: React.FC = () => {
         id: doc.id,
         ...doc.data(),
       })) as Product[];
-      offlineStorage.cacheProducts(products);
+      await offlineStorage.cacheProducts(products);
 
       // Cache categories
       const categoriesQuery = query(
@@ -83,7 +83,7 @@ const OfflineDataHandler: React.FC = () => {
         id: doc.id,
         name: doc.data().name as string,
       })) as Category[];
-      offlineStorage.cacheCategories(categories);
+      await offlineStorage.cacheCategories(categories);
 
       if (process.env.NODE_ENV === 'development') {
         console.log(

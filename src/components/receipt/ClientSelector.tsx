@@ -70,7 +70,7 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
           if (process.env.NODE_ENV === 'development') {
             console.log('📱 Loading clients from offline cache');
           }
-          const cachedClients = offlineStorage.getCachedClients();
+          const cachedClients = await offlineStorage.getCachedClients();
           setClients(cachedClients);
         } else {
           // Load from Firebase and update cache
@@ -89,14 +89,14 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
             setClients(clientsData);
 
             // Update offline cache
-            offlineStorage.cacheClients(clientsData);
+            await offlineStorage.cacheClients(clientsData);
           } catch (error) {
             // If online fetch fails, fall back to cached data
             console.warn(
               'Failed to fetch clients online, using cached data:',
               error
             );
-            const cachedClients = offlineStorage.getCachedClients();
+            const cachedClients = await offlineStorage.getCachedClients();
             setClients(cachedClients);
           }
         }
@@ -211,12 +211,12 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
       await fetchClients();
 
       // Wait for state to update and then find the new client
-      setTimeout(() => {
+      setTimeout(async () => {
         // Function to find and select new client
-        const findAndSelectNewClient = () => {
+        const findAndSelectNewClient = async () => {
           // Get the most up-to-date clients list
           const latestClients = isOffline
-            ? offlineStorage.getCachedClients()
+            ? await offlineStorage.getCachedClients()
             : clientsRef.current;
 
           // Find the newly added client (one that wasn't in the original list)
@@ -235,13 +235,13 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
         };
 
         // Try to find the client immediately
-        if (!findAndSelectNewClient()) {
+        if (!(await findAndSelectNewClient())) {
           console.warn(
             'Could not find newly added client for auto-selection, retrying...'
           );
           // If not found, try once more after a short delay
-          setTimeout(() => {
-            if (!findAndSelectNewClient()) {
+          setTimeout(async () => {
+            if (!(await findAndSelectNewClient())) {
               console.warn(
                 'Could not find newly added client for auto-selection after retry'
               );
