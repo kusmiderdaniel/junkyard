@@ -249,9 +249,11 @@ const ItemRow: React.FC<ItemRowProps> = ({
               onQuantityChange(index, parsedValue);
               setQuantityEdit(''); // Clear edit state
             }}
-            onFocus={() => {
+            onFocus={e => {
               // Initialize edit state with current value
               setQuantityEdit(item.quantity ? item.quantity.toString() : '');
+              // Select all text for easy replacement (delay to ensure DOM update)
+              setTimeout(() => e.target.select(), 0);
             }}
             className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right ${
               hasErrors && !hasValidQuantity
@@ -284,9 +286,11 @@ const ItemRow: React.FC<ItemRowProps> = ({
               onBuyPriceChange(index, parsedValue);
               setBuyPriceEdit(''); // Clear edit state
             }}
-            onFocus={() => {
+            onFocus={e => {
               // Initialize edit state with current value
               setBuyPriceEdit(item.buy_price ? item.buy_price.toString() : '');
+              // Select all text for easy replacement (delay to ensure DOM update)
+              setTimeout(() => e.target.select(), 0);
             }}
             className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right ${
               hasErrors && !hasValidBuyPrice
