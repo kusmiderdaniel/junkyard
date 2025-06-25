@@ -58,6 +58,15 @@ interface ClientStatistics {
   totalAmount: number;
 }
 
+interface MonthlyData {
+  month: string;
+  displayMonth: string;
+  totalQuantity: number;
+  totalAmount: number;
+}
+
+type MonthlyViewType = 'quantity' | 'amount';
+
 interface ExcelStatisticsData {
   'Kod produktu': string;
   'Nazwa produktu': string;
@@ -98,6 +107,11 @@ const Statistics: React.FC = () => {
     []
   );
   const [clients, setClients] = useState<{ [key: string]: string }>({});
+
+  // Monthly statistics state
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [monthlyViewType, setMonthlyViewType] =
+    useState<MonthlyViewType>('amount');
 
   // Sorting state
   const [sortField, setSortField] =
@@ -315,6 +329,69 @@ const Statistics: React.FC = () => {
     setClientStatistics(clientArray);
   }, [receipts, clients]);
 
+  // Process receipts to create monthly statistics
+  const processMonthlyStatistics = useCallback(() => {
+    const monthlyMap = new Map<string, MonthlyData>();
+
+    receipts.forEach(receipt => {
+      const date = receipt.date;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      // Format month for display (e.g., "2024-01" -> "Sty 2024")
+      const monthNames = [
+        'Sty',
+        'Lut',
+        'Mar',
+        'Kwi',
+        'Maj',
+        'Cze',
+        'Lip',
+        'Sie',
+        'Wrz',
+        'Paź',
+        'Lis',
+        'Gru',
+      ];
+      const displayMonth = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+
+      // Calculate filtered totals for this receipt
+      let receiptQuantity = 0;
+      let receiptAmount = 0;
+
+      receipt.items.forEach(item => {
+        // Filter by selected item code if specified
+        if (selectedItemCode && item.itemCode !== selectedItemCode) {
+          return;
+        }
+        receiptQuantity += item.quantity;
+        receiptAmount += item.total_price;
+      });
+
+      // Only include receipt if it has relevant items
+      if (receiptQuantity > 0) {
+        if (monthlyMap.has(monthKey)) {
+          const existing = monthlyMap.get(monthKey)!;
+          existing.totalQuantity += receiptQuantity;
+          existing.totalAmount += receiptAmount;
+        } else {
+          monthlyMap.set(monthKey, {
+            month: monthKey,
+            displayMonth,
+            totalQuantity: receiptQuantity,
+            totalAmount: receiptAmount,
+          });
+        }
+      }
+    });
+
+    // Convert map to array and sort by month
+    const monthlyArray = Array.from(monthlyMap.values()).sort((a, b) =>
+      a.month.localeCompare(b.month)
+    );
+
+    setMonthlyData(monthlyArray);
+  }, [receipts, selectedItemCode]);
+
   // Extract unique item codes from receipts
   const extractItemCodes = useCallback(() => {
     const itemCodesSet = new Set<string>();
@@ -361,6 +438,18 @@ const Statistics: React.FC = () => {
   useEffect(() => {
     processClientStatistics();
   }, [processClientStatistics]);
+
+  // Process monthly statistics when receipts change
+  useEffect(() => {
+    processMonthlyStatistics();
+  }, [processMonthlyStatistics]);
+
+  // Auto-select "this year" when monthly trends tab is active
+  useEffect(() => {
+    if (activeTab === 'trends' && dateFilter !== 'thisYear') {
+      setDateFilter('thisYear');
+    }
+  }, [activeTab, dateFilter]);
 
   // Handle date filter change
   const handleDateFilterChange = (filterType: DateFilterType) => {
@@ -597,7 +686,7 @@ const Statistics: React.FC = () => {
     },
     {
       id: 'trends' as ReportTab,
-      label: 'Trendy sprzedaży',
+      label: 'Kwoty i ilości wg miesięcy',
       icon: (
         <svg
           className="w-4 h-4"
@@ -1075,6 +1164,156 @@ const Statistics: React.FC = () => {
     </div>
   );
 
+  const renderMonthlyTrendsTab = () => (
+    <div className="space-y-6">
+      {/* Controls */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Trendy w czasie
+          </h2>
+
+          {/* View Type Dropdown */}
+          <div className="flex items-center space-x-3">
+            <label className="text-sm font-medium text-gray-700">Widok:</label>
+            <div className="relative">
+              <div className="w-48 px-4 py-2 border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer">
+                <div className="flex items-center space-x-3">
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                  <span className="text-sm text-gray-700">
+                    {monthlyViewType === 'amount'
+                      ? 'Kwoty (PLN)'
+                      : 'Ilości (kg)'}
+                  </span>
+                </div>
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+
+              <select
+                value={monthlyViewType}
+                onChange={e =>
+                  setMonthlyViewType(e.target.value as MonthlyViewType)
+                }
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              >
+                <option value="amount">Kwoty (PLN)</option>
+                <option value="quantity">Ilości (kg)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800">
+            {monthlyViewType === 'amount'
+              ? 'Kwoty wg miesięcy'
+              : 'Ilości wg miesięcy'}
+          </h2>
+        </div>
+        <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
+            </div>
+          ) : monthlyData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart
+                data={monthlyData.map(item => ({
+                  name: item.displayMonth,
+                  value:
+                    monthlyViewType === 'amount'
+                      ? item.totalAmount
+                      : item.totalQuantity,
+                }))}
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 60,
+                }}
+              >
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                  tick={{ fill: '#374151' }}
+                />
+                <YAxis
+                  fontSize={12}
+                  tick={{ fill: '#374151' }}
+                  tickFormatter={(value: number) =>
+                    new Intl.NumberFormat('pl-PL', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                      useGrouping: true,
+                    }).format(value)
+                  }
+                />
+                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    formatter={(value: number) =>
+                      monthlyViewType === 'amount'
+                        ? formatCurrency(value)
+                        : `${formatQuantity(value)} kg`
+                    }
+                    style={{
+                      fontSize: '10px',
+                      fill: '#374151',
+                      fontWeight: '500',
+                    }}
+                  />
+                  {monthlyData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={`hsl(${220 + (index % 8) * 15}, 70%, 50%)`}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <p className="text-gray-500">
+                Brak danych dostępnych dla wybranego okresu.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   const renderPlaceholderTab = (tabName: string) => (
     <div className="bg-white rounded-lg shadow-md p-8">
       <div className="text-center">
@@ -1320,16 +1559,6 @@ const Statistics: React.FC = () => {
                       Historia cen produktów w czasie
                     </span>
                   </div>
-                  <div className="flex items-center text-gray-700">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full mr-3"></div>
-                    <span className="text-sm">Kwoty sprzedaży wg miesięcy</span>
-                  </div>
-                  <div className="flex items-center text-gray-700">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
-                    <span className="text-sm">
-                      Ilości wg miesięcy (wykres skumulowany)
-                    </span>
-                  </div>
                 </div>
                 <div className="mt-4 p-3 bg-white bg-opacity-60 rounded-md">
                   <p className="text-xs text-gray-600 italic">
@@ -1367,7 +1596,7 @@ const Statistics: React.FC = () => {
         <div className="p-6">
           {activeTab === 'products' && renderProductsTab()}
           {activeTab === 'clients' && renderClientsTab()}
-          {activeTab === 'trends' && renderPlaceholderTab('Trendy sprzedaży')}
+          {activeTab === 'trends' && renderMonthlyTrendsTab()}
           {activeTab === 'monthly' &&
             renderPlaceholderTab('Raporty miesięczne')}
         </div>
