@@ -249,7 +249,12 @@ export const useReceiptForm = () => {
       }
 
       if (receiptData.items && receiptData.items.length > 0) {
-        setItems(receiptData.items);
+        // Ensure all items have weightAdjustment property (for backward compatibility)
+        const itemsWithDefaults = receiptData.items.map((item: any) => ({
+          ...item,
+          weightAdjustment: item.weightAdjustment || 1,
+        }));
+        setItems(itemsWithDefaults);
       }
     } catch (error) {
       toast.error('Błąd ładowania danych kwitu.');
@@ -304,12 +309,13 @@ export const useReceiptForm = () => {
         itemCode: product.itemCode,
         sell_price: product.sell_price,
         buy_price: product.buy_price,
-        weightAdjustment: product.weightAdjustment,
+        weightAdjustment: product.weightAdjustment || 1,
       };
 
       const quantity = updatedItems[index].quantity;
+      const safeWeightAdjustment = product.weightAdjustment || 1;
       updatedItems[index].total_price =
-        quantity * product.weightAdjustment * product.buy_price;
+        quantity * safeWeightAdjustment * product.buy_price;
 
       return updatedItems;
     });
@@ -322,8 +328,9 @@ export const useReceiptForm = () => {
         updatedItems[index].quantity = quantity;
 
         const { weightAdjustment, buy_price } = updatedItems[index];
+        const safeWeightAdjustment = weightAdjustment || 1;
         updatedItems[index].total_price =
-          quantity * weightAdjustment * buy_price;
+          quantity * safeWeightAdjustment * buy_price;
 
         return updatedItems;
       });
@@ -338,8 +345,9 @@ export const useReceiptForm = () => {
         updatedItems[index].buy_price = buyPrice;
 
         const { quantity, weightAdjustment } = updatedItems[index];
+        const safeWeightAdjustment = weightAdjustment || 1;
         updatedItems[index].total_price =
-          quantity * weightAdjustment * buyPrice;
+          quantity * safeWeightAdjustment * buyPrice;
 
         return updatedItems;
       });
