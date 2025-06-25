@@ -15,6 +15,7 @@ import OfflineIndicator from './OfflineIndicator';
 import OfflineDataHandler from './OfflineDataHandler';
 import SyncIndicator from './SyncIndicator';
 import ErrorBoundary from './ErrorBoundary';
+import AppFooter from './AppFooter';
 
 const NavItem = ({
   to,
@@ -139,9 +140,13 @@ const MainLayout: React.FC = () => {
       </ErrorBoundary>
 
       <ErrorBoundary context="Main Content Area">
-        <main className="flex-1 p-8 overflow-y-auto">
+        <main className="flex-1 p-8 overflow-y-auto pb-10">
           <Outlet />
         </main>
+      </ErrorBoundary>
+
+      <ErrorBoundary context="Application Footer" showReload={false}>
+        <AppFooter />
       </ErrorBoundary>
     </div>
   );
