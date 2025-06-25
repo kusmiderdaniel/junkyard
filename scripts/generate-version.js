@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Function to get version based on environment
-function generateVersion(environment) {
+// Function to generate unified version format: 2.DDMMYYYYa
+function generateVersion() {
   const now = new Date();
   const day = String(now.getDate()).padStart(2, '0');
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -26,41 +26,33 @@ function generateVersion(environment) {
   }
 
   const today = `${day}${month}${year}`;
-  const envKey = `${today}-${environment}`;
 
-  // Check how many deployments we've had today for this environment
-  if (!versionData.deployments[envKey]) {
-    versionData.deployments[envKey] = 0;
+  // Check how many deployments we've had today (unified across all environments)
+  if (!versionData.deployments[today]) {
+    versionData.deployments[today] = 0;
   }
 
-  versionData.deployments[envKey]++;
+  versionData.deployments[today]++;
 
   // Build the date part with letter suffix if needed
   let datePart = `${day}${month}${year}`;
-  if (versionData.deployments[envKey] > 1) {
-    const letterIndex = versionData.deployments[envKey] - 2; // -2 because 'a' is the second deployment
+  if (versionData.deployments[today] > 1) {
+    const letterIndex = versionData.deployments[today] - 2; // -2 because 'a' is the second deployment
     const letter = String.fromCharCode(97 + letterIndex); // 97 is 'a'
     datePart += letter;
   }
 
-  // Build final version with environment suffix
-  let version = `2.${datePart}`;
-  if (environment === 'development') {
-    version += '-dev';
-  } else if (environment === 'staging') {
-    version += '-staging';
-  }
-  // production doesn't get a suffix
+  // Build final version in unified format: 2.DDMMYYYYa
+  const version = `2.${datePart}`;
 
   // Update version data
   versionData.current = version;
-  versionData.environment = environment;
   versionData.generatedAt = now.toISOString();
 
   // Save version data
   fs.writeFileSync(versionFilePath, JSON.stringify(versionData, null, 2));
 
-  console.log(`Generated version: ${version} for environment: ${environment}`);
+  console.log(`Generated unified version: ${version}`);
   return version;
 }
 
@@ -118,23 +110,11 @@ function updateLoginVersion(version) {
 
 // Main execution
 function main() {
-  const environment = process.argv[2] || 'development';
-  const validEnvironments = ['development', 'staging', 'production'];
-
-  if (!validEnvironments.includes(environment)) {
-    console.error(
-      `Invalid environment: ${environment}. Valid options: ${validEnvironments.join(', ')}`
-    );
-    process.exit(1);
-  }
-
-  const version = generateVersion(environment);
+  const version = generateVersion();
   updateAppFooterVersion(version);
   updateLoginVersion(version);
 
-  console.log(
-    `✅ Version ${version} generated successfully for ${environment} environment`
-  );
+  console.log(`✅ Unified version ${version} generated successfully`);
 }
 
 // Execute if this file is run directly

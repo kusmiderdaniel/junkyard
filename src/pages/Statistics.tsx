@@ -64,6 +64,8 @@ type DateFilterType =
   | 'thisYear'
   | 'custom';
 
+type ReportTab = 'products' | 'clients' | 'trends' | 'monthly';
+
 const Statistics: React.FC = () => {
   const { user } = useAuth();
 
@@ -88,6 +90,9 @@ const Statistics: React.FC = () => {
 
   // Toggle state for future features
   const [showFutureFeatures, setShowFutureFeatures] = useState(false);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<ReportTab>('products');
 
   // Date range calculation functions
   const getDateRange = useCallback(
@@ -338,7 +343,7 @@ const Statistics: React.FC = () => {
         toast.error('Brak danych do eksportu.');
         return;
       }
-      
+
       // Lazy load Excel export utility
       const { ExcelExportUtility } = await import('../utils/excelExport');
 
@@ -411,6 +416,329 @@ const Statistics: React.FC = () => {
       </div>
     );
   }
+
+  const tabs = [
+    {
+      id: 'products' as ReportTab,
+      label: 'Podsumowanie produktów',
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'clients' as ReportTab,
+      label: 'Analiza klientów',
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'trends' as ReportTab,
+      label: 'Trendy sprzedaży',
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'monthly' as ReportTab,
+      label: 'Raporty miesięczne',
+      icon: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      ),
+    },
+  ];
+
+  const renderProductsTab = () => (
+    <div className="flex gap-6">
+      <div className="w-1/2 space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Łączna Ilość
+            </h3>
+            <p className="text-3xl font-bold text-orange-700">
+              {formatQuantity(totalQuantity)} kg
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Łączna Kwota
+            </h3>
+            <p className="text-3xl font-bold text-green-600">
+              {formatCurrency(totalAmount)}
+            </p>
+          </div>
+        </div>
+
+        {/* Statistics Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Podsumowanie Produktów
+            </h2>
+            <button
+              onClick={handleExportToExcel}
+              disabled={!user || loading || statisticsSummary.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14,2 14,8 20,8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="21"></line>
+                <line x1="8" y1="13" x2="16" y2="21"></line>
+              </svg>
+              Eksportuj do Excela
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
+            </div>
+          ) : statisticsSummary.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort('itemCode')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Kod produktu</span>
+                        {sortField === 'itemCode' && (
+                          <span className="text-orange-500">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort('itemName')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Nazwa produktu</span>
+                        {sortField === 'itemName' && (
+                          <span className="text-orange-500">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort('totalQuantity')}
+                    >
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Łączna Ilość</span>
+                        {sortField === 'totalQuantity' && (
+                          <span className="text-orange-500">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort('totalAmount')}
+                    >
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Łączna Kwota</span>
+                        {sortField === 'totalAmount' && (
+                          <span className="text-orange-500">
+                            {sortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedStatistics.map((item, index) => (
+                    <tr
+                      key={`${item.itemCode}-${item.itemName}`}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.itemCode}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {item.itemName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {formatQuantity(item.totalQuantity)} kg
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {formatCurrency(item.totalAmount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-32">
+              <p className="text-gray-500">
+                Nie znaleziono danych dla wybranych filtrów.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right side - Bar Chart */}
+      <div className="w-1/2">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Łączna kwota wg produktu
+            </h2>
+          </div>
+          <div className="p-6">
+            {sortedStatistics.length > 0 ? (
+              <ResponsiveContainer
+                width="100%"
+                height={Math.max(400, sortedStatistics.length * 60)}
+              >
+                <BarChart
+                  layout="vertical"
+                  data={sortedStatistics.map((item, index) => ({
+                    name: item.itemName,
+                    value: item.totalAmount,
+                  }))}
+                  margin={{
+                    top: 20,
+                    right: 100,
+                    left: 5,
+                    bottom: 20,
+                  }}
+                  barCategoryGap={sortedStatistics.length > 10 ? 0.5 : 1}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={150}
+                    fontSize={14}
+                    tick={{ fill: '#374151' }}
+                    interval={0}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill="#3b82f6"
+                    barSize={
+                      sortedStatistics.length > 15
+                        ? 35
+                        : sortedStatistics.length > 10
+                          ? 40
+                          : 50
+                    }
+                    radius={[0, 6, 6, 0]}
+                  >
+                    <LabelList
+                      dataKey="value"
+                      position="right"
+                      formatter={(value: number) => formatCurrency(value)}
+                      style={{
+                        fontSize: '12px',
+                        fill: '#374151',
+                        fontWeight: '500',
+                      }}
+                    />
+                    {sortedStatistics.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={`hsl(${200 + (index % 12) * 25}, 70%, 50%)`}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">
+                  Brak danych dostępnych dla wykresu
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPlaceholderTab = (tabName: string) => (
+    <div className="bg-white rounded-lg shadow-md p-8">
+      <div className="text-center">
+        <div className="text-6xl mb-4">🚧</div>
+        <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          {tabName} - W przygotowaniu
+        </h3>
+        <p className="text-gray-500">
+          Ta funkcja będzie dostępna w przyszłych aktualizacjach systemu.
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -671,232 +999,34 @@ const Statistics: React.FC = () => {
         </div>
       </div>
 
-      {/* Content container for KPIs, Table, and Chart */}
-      <div className="flex gap-6">
-        <div className="w-1/2 space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Łączna Ilość
-              </h3>
-              <p className="text-3xl font-bold text-orange-700">
-                {formatQuantity(totalQuantity)} kg
-              </p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                Łączna Kwota
-              </h3>
-              <p className="text-3xl font-bold text-green-600">
-                {formatCurrency(totalAmount)}
-              </p>
-            </div>
-          </div>
-
-          {/* Statistics Table */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Podsumowanie Produktów
-              </h2>
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8 px-6">
+            {tabs.map(tab => (
               <button
-                onClick={handleExportToExcel}
-                disabled={!user || loading || statisticsSummary.length === 0}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2 transition-colors duration-200 ${
+                  activeTab === tab.id
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14,2 14,8 20,8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="21"></line>
-                  <line x1="8" y1="13" x2="16" y2="21"></line>
-                </svg>
-                Eksportuj do Excela
+                {tab.icon}
+                <span>{tab.label}</span>
               </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
-              </div>
-            ) : statisticsSummary.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                        onClick={() => handleSort('itemCode')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Kod produktu</span>
-                          {sortField === 'itemCode' && (
-                            <span className="text-orange-500">
-                              {sortDirection === 'asc' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                        onClick={() => handleSort('itemName')}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>Nazwa produktu</span>
-                          {sortField === 'itemName' && (
-                            <span className="text-orange-500">
-                              {sortDirection === 'asc' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                        onClick={() => handleSort('totalQuantity')}
-                      >
-                        <div className="flex items-center justify-end space-x-1">
-                          <span>Łączna Ilość</span>
-                          {sortField === 'totalQuantity' && (
-                            <span className="text-orange-500">
-                              {sortDirection === 'asc' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                        onClick={() => handleSort('totalAmount')}
-                      >
-                        <div className="flex items-center justify-end space-x-1">
-                          <span>Łączna Kwota</span>
-                          {sortField === 'totalAmount' && (
-                            <span className="text-orange-500">
-                              {sortDirection === 'asc' ? '↑' : '↓'}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {sortedStatistics.map((item, index) => (
-                      <tr
-                        key={`${item.itemCode}-${item.itemName}`}
-                        className="hover:bg-gray-50"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.itemCode}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.itemName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {formatQuantity(item.totalQuantity)} kg
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                          {formatCurrency(item.totalAmount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-32">
-                <p className="text-gray-500">
-                  Nie znaleziono danych dla wybranych filtrów.
-                </p>
-              </div>
-            )}
-          </div>
+            ))}
+          </nav>
         </div>
 
-        {/* Right side - Bar Chart */}
-        <div className="w-1/2">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">
-                Łączna kwota wg produktu
-              </h2>
-            </div>
-            <div className="p-6">
-              {sortedStatistics.length > 0 ? (
-                <ResponsiveContainer
-                  width="100%"
-                  height={Math.max(400, sortedStatistics.length * 60)}
-                >
-                  <BarChart
-                    layout="vertical"
-                    data={sortedStatistics.map((item, index) => ({
-                      name: item.itemName,
-                      value: item.totalAmount,
-                    }))}
-                    margin={{
-                      top: 20,
-                      right: 100,
-                      left: 5,
-                      bottom: 20,
-                    }}
-                    barCategoryGap={sortedStatistics.length > 10 ? 0.5 : 1}
-                  >
-                    <XAxis type="number" hide />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={150}
-                      fontSize={14}
-                      tick={{ fill: '#374151' }}
-                      interval={0}
-                    />
-                    <Bar
-                      dataKey="value"
-                      fill="#3b82f6"
-                      barSize={
-                        sortedStatistics.length > 15
-                          ? 35
-                          : sortedStatistics.length > 10
-                            ? 40
-                            : 50
-                      }
-                      radius={[0, 6, 6, 0]}
-                    >
-                      <LabelList
-                        dataKey="value"
-                        position="right"
-                        formatter={(value: number) => formatCurrency(value)}
-                        style={{
-                          fontSize: '12px',
-                          fill: '#374151',
-                          fontWeight: '500',
-                        }}
-                      />
-                      {sortedStatistics.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={`hsl(${200 + (index % 12) * 25}, 70%, 50%)`}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-64">
-                  <p className="text-gray-500">
-                    Brak danych dostępnych dla wykresu
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Tab Content */}
+        <div className="p-6">
+          {activeTab === 'products' && renderProductsTab()}
+          {activeTab === 'clients' && renderPlaceholderTab('Analiza klientów')}
+          {activeTab === 'trends' && renderPlaceholderTab('Trendy sprzedaży')}
+          {activeTab === 'monthly' &&
+            renderPlaceholderTab('Raporty miesięczne')}
         </div>
       </div>
     </div>
