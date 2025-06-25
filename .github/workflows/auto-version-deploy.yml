@@ -50,6 +50,9 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment: development
+    permissions:
+      contents: write
+      actions: read
 
     steps:
       - name: Checkout code
@@ -110,6 +113,9 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: staging
+    permissions:
+      contents: write
+      actions: read
 
     steps:
       - name: Checkout code
@@ -170,6 +176,9 @@ jobs:
     needs: test
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     environment: production
+    permissions:
+      contents: write
+      actions: read
 
     steps:
       - name: Checkout code
@@ -249,6 +258,9 @@ jobs:
     needs: test
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment != 'production'
     environment: ${{ github.event.inputs.environment }}
+    permissions:
+      contents: write
+      actions: read
 
     steps:
       - name: Checkout code
