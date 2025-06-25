@@ -133,35 +133,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate version for staging
-        run: node scripts/generate-version.js staging
-
-      - name: Create Pull Request for version changes
+      - name: Generate version for staging (no commit)
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
-          
-          if ! git diff --staged --quiet; then
-            VERSION=$(node -p "require('./src/version.json').current")
-            BRANCH_NAME="auto-version-staging-$VERSION"
-            
-            git checkout -b "$BRANCH_NAME"
-            git commit -m "🔖 Auto-version: $VERSION"
-            git push origin "$BRANCH_NAME"
-            
-            # Create pull request using GitHub CLI
-            gh pr create \
-              --title "🔖 Auto-version: $VERSION" \
-              --body "Automatically generated version update for staging deployment. This PR can be auto-merged." \
-              --base main \
-              --head "$BRANCH_NAME"
-            
-            # Try to enable auto-merge (requires repository settings to allow it)
-            gh pr merge "$BRANCH_NAME" --auto --squash || echo "Auto-merge not available, manual merge required"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          node scripts/generate-version.js staging
+          echo "Generated staging version for deployment, but not committing to main branch"
+          echo "Version will be used for deployment artifacts only"
 
       - name: Create staging environment file
         run: |
@@ -216,35 +192,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate version for production
-        run: node scripts/generate-version.js production
-
-      - name: Create Pull Request for version changes
+      - name: Generate version for production (no commit)
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
-          
-          if ! git diff --staged --quiet; then
-            VERSION=$(node -p "require('./src/version.json').current")
-            BRANCH_NAME="auto-version-production-$VERSION"
-            
-            git checkout -b "$BRANCH_NAME"
-            git commit -m "🔖 Auto-version: $VERSION"
-            git push origin "$BRANCH_NAME"
-            
-            # Create pull request using GitHub CLI
-            gh pr create \
-              --title "🔖 Auto-version: $VERSION (Production)" \
-              --body "Automatically generated version update for production deployment. This PR can be auto-merged." \
-              --base main \
-              --head "$BRANCH_NAME"
-            
-            # Try to enable auto-merge for production (you may want to disable this for production)
-            echo "Production version PR created. Manual review recommended before merging."
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          node scripts/generate-version.js production
+          echo "Generated production version for deployment, but not committing to main branch"
+          echo "Version will be used for deployment artifacts only"
+          echo "⚠️  Note: Production version not saved to repository. Consider manual version management for production."
 
       - name: Create production environment file
         run: |
@@ -317,16 +270,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate version for ${{ github.event.inputs.environment }}
-        run: node scripts/generate-version.js ${{ github.event.inputs.environment }}
-
-      - name: Commit version changes
+      - name: Generate version for ${{ github.event.inputs.environment }} (no commit)
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
-          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
-          git push
+          node scripts/generate-version.js ${{ github.event.inputs.environment }}
+          echo "Generated version for ${{ github.event.inputs.environment }} deployment, but not committing due to branch protection"
+          echo "Version will be used for deployment artifacts only"
 
       - name: Create environment file
         run: |

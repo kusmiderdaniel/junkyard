@@ -4,7 +4,7 @@ import { auth } from '../firebase';
 import { RateLimitedAuth } from '../utils/rateLimitedFirebase';
 import AuthDebug from './AuthDebug';
 
-const APP_VERSION = '2.25062025c-dev';
+const APP_VERSION = '2.25062025e-dev';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
