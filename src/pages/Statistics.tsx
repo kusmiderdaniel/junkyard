@@ -1,88 +1,22 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  Timestamp,
-} from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { useStatisticsData } from '../hooks/useStatisticsData';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Cell,
-  LabelList,
-} from 'recharts';
-// Remove direct import - will be lazy loaded
-
-interface ReceiptItem {
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  total_price: number;
-}
-
-interface Receipt {
-  id: string;
-  number: string;
-  date: Date;
-  clientId: string;
-  userID: string;
-  totalAmount: number;
-  items: ReceiptItem[];
-}
-
-interface StatisticsSummary {
-  itemCode: string;
-  itemName: string;
-  totalQuantity: number;
-  totalAmount: number;
-  averagePrice: number;
-  transactionCount: number;
-}
-
-interface ClientStatistics {
-  clientId: string;
-  clientName: string;
-  receiptCount: number;
-  totalQuantity: number;
-  totalAmount: number;
-}
-
-interface MonthlyData {
-  month: string;
-  displayMonth: string;
-  totalQuantity: number;
-  totalAmount: number;
-}
-
-type MonthlyViewType = 'quantity' | 'amount';
-
-interface ExcelStatisticsData {
-  'Kod produktu': string;
-  'Nazwa produktu': string;
-  Ilość: number;
-  Kwota: number;
-}
-
-type DateFilterType =
-  | 'thisWeek'
-  | 'lastWeek'
-  | 'thisMonth'
-  | 'lastMonth'
-  | 'thisYear'
-  | 'custom';
-
-type ReportTab = 'products' | 'clients' | 'trends' | 'monthly';
+  DateFilterType,
+  ReportTab,
+  MonthlyViewType,
+  StatisticsSummary,
+  ClientStatistics,
+  ExcelStatisticsData,
+  SortDirection,
+} from '../types/statistics';
+import { StatisticsFilters } from '../components/statistics/StatisticsFilters';
+import { TabNavigation } from '../components/statistics/TabNavigation';
+import { ProductsTab } from '../components/statistics/ProductsTab';
+import { ClientsTab } from '../components/statistics/ClientsTab';
+import { MonthlyTrendsTab } from '../components/statistics/MonthlyTrendsTab';
 
 const Statistics: React.FC = () => {
   const { user } = useAuth();
@@ -94,36 +28,30 @@ const Statistics: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [selectedItemCode, setSelectedItemCode] = useState('');
 
-  // Data state
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [statisticsSummary, setStatisticsSummary] = useState<
-    StatisticsSummary[]
-  >([]);
-  const [availableItemCodes, setAvailableItemCodes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Client statistics state
-  const [clientStatistics, setClientStatistics] = useState<ClientStatistics[]>(
-    []
-  );
-  const [clients, setClients] = useState<{ [key: string]: string }>({});
-
-  // Monthly statistics state
-  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  // Monthly view type state
   const [monthlyViewType, setMonthlyViewType] =
     useState<MonthlyViewType>('amount');
+
+  // Use custom hook for data management
+  const {
+    statisticsSummary,
+    availableItemCodes,
+    clientStatistics,
+    monthlyData,
+    loading,
+    getDateRange,
+  } = useStatisticsData(dateFilter, startDate, endDate, selectedItemCode);
 
   // Sorting state
   const [sortField, setSortField] =
     useState<keyof StatisticsSummary>('totalAmount');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Client sorting state
   const [clientSortField, setClientSortField] =
     useState<keyof ClientStatistics>('totalAmount');
-  const [clientSortDirection, setClientSortDirection] = useState<
-    'asc' | 'desc'
-  >('desc');
+  const [clientSortDirection, setClientSortDirection] =
+    useState<SortDirection>('desc');
 
   // Toggle state for future features
   const [showFutureFeatures, setShowFutureFeatures] = useState(false);
@@ -131,282 +59,8 @@ const Statistics: React.FC = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState<ReportTab>('products');
 
-  // Date range calculation functions
-  const getDateRange = useCallback(
-    (filterType: DateFilterType): { start: Date; end: Date } => {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-      switch (filterType) {
-        case 'thisWeek': {
-          const dayOfWeek = today.getDay();
-          const monday = new Date(today);
-          monday.setDate(
-            today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1)
-          );
-          const sunday = new Date(monday);
-          sunday.setDate(monday.getDate() + 6);
-          sunday.setHours(23, 59, 59, 999);
-          return { start: monday, end: sunday };
-        }
-
-        case 'lastWeek': {
-          const dayOfWeek = today.getDay();
-          const lastMonday = new Date(today);
-          lastMonday.setDate(
-            today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1) - 7
-          );
-          const lastSunday = new Date(lastMonday);
-          lastSunday.setDate(lastMonday.getDate() + 6);
-          lastSunday.setHours(23, 59, 59, 999);
-          return { start: lastMonday, end: lastSunday };
-        }
-
-        case 'thisMonth': {
-          const start = new Date(now.getFullYear(), now.getMonth(), 1);
-          const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          end.setHours(23, 59, 59, 999);
-          return { start, end };
-        }
-
-        case 'lastMonth': {
-          const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          const end = new Date(now.getFullYear(), now.getMonth(), 0);
-          end.setHours(23, 59, 59, 999);
-          return { start, end };
-        }
-
-        case 'thisYear': {
-          const start = new Date(now.getFullYear(), 0, 1);
-          const end = new Date(now.getFullYear(), 11, 31);
-          end.setHours(23, 59, 59, 999);
-          return { start, end };
-        }
-
-        case 'custom': {
-          const start = startDate
-            ? new Date(startDate)
-            : new Date(now.getFullYear(), now.getMonth(), 1);
-          const end = endDate ? new Date(endDate) : new Date();
-          end.setHours(23, 59, 59, 999);
-          return { start, end };
-        }
-
-        default:
-          return { start: today, end: today };
-      }
-    },
-    [startDate, endDate]
-  );
-
-  // Fetch receipts based on filters
-  const fetchReceipts = useCallback(async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      const { start, end } = getDateRange(dateFilter);
-
-      const receiptsQuery = query(
-        collection(db, 'receipts'),
-        where('userID', '==', user.uid),
-        where('date', '>=', Timestamp.fromDate(start)),
-        where('date', '<=', Timestamp.fromDate(end))
-      );
-
-      const querySnapshot = await getDocs(receiptsQuery);
-      const receiptsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate(),
-      })) as Receipt[];
-
-      setReceipts(receiptsData);
-    } catch (error) {
-      // Statistics will remain empty if fetch fails
-      setReceipts([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, dateFilter, getDateRange]);
-
-  // Fetch clients data
-  const fetchClients = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const clientsQuery = query(
-        collection(db, 'clients'),
-        where('userID', '==', user.uid)
-      );
-
-      const querySnapshot = await getDocs(clientsQuery);
-      const clientsData: { [key: string]: string } = {};
-
-      querySnapshot.docs.forEach(doc => {
-        clientsData[doc.id] = doc.data().name || 'Nieznany klient';
-      });
-
-      setClients(clientsData);
-    } catch (error) {
-      // Clients will remain empty if fetch fails
-      setClients({});
-    }
-  }, [user]);
-
-  // Process receipts to create statistics summary
-  const processStatistics = useCallback(() => {
-    const itemMap = new Map<string, StatisticsSummary>();
-
-    receipts.forEach(receipt => {
-      receipt.items.forEach(item => {
-        // Filter by selected item code if specified
-        if (selectedItemCode && item.itemCode !== selectedItemCode) {
-          return;
-        }
-
-        const key = `${item.itemCode}-${item.itemName}`;
-
-        if (itemMap.has(key)) {
-          const existing = itemMap.get(key)!;
-          existing.totalQuantity += item.quantity;
-          existing.totalAmount += item.total_price;
-          existing.transactionCount += 1;
-          existing.averagePrice = existing.totalAmount / existing.totalQuantity;
-        } else {
-          itemMap.set(key, {
-            itemCode: item.itemCode,
-            itemName: item.itemName,
-            totalQuantity: item.quantity,
-            totalAmount: item.total_price,
-            averagePrice: item.total_price / item.quantity,
-            transactionCount: 1,
-          });
-        }
-      });
-    });
-
-    // Convert map to array and apply sorting
-    const summaryArray = Array.from(itemMap.values());
-    setStatisticsSummary(summaryArray);
-  }, [receipts, selectedItemCode]);
-
-  // Process receipts to create client statistics
-  const processClientStatistics = useCallback(() => {
-    const clientMap = new Map<string, ClientStatistics>();
-
-    receipts.forEach(receipt => {
-      const clientId = receipt.clientId;
-      const clientName = clients[clientId] || 'Nieznany klient';
-
-      // Calculate total quantity for this receipt
-      const receiptQuantity = receipt.items.reduce(
-        (sum, item) => sum + item.quantity,
-        0
-      );
-
-      if (clientMap.has(clientId)) {
-        const existing = clientMap.get(clientId)!;
-        existing.receiptCount += 1;
-        existing.totalQuantity += receiptQuantity;
-        existing.totalAmount += receipt.totalAmount;
-      } else {
-        clientMap.set(clientId, {
-          clientId,
-          clientName,
-          receiptCount: 1,
-          totalQuantity: receiptQuantity,
-          totalAmount: receipt.totalAmount,
-        });
-      }
-    });
-
-    // Convert map to array and get top 20 by total amount
-    const clientArray = Array.from(clientMap.values())
-      .sort((a, b) => b.totalAmount - a.totalAmount)
-      .slice(0, 20);
-
-    setClientStatistics(clientArray);
-  }, [receipts, clients]);
-
-  // Process receipts to create monthly statistics
-  const processMonthlyStatistics = useCallback(() => {
-    const monthlyMap = new Map<string, MonthlyData>();
-
-    receipts.forEach(receipt => {
-      const date = receipt.date;
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-      // Format month for display (e.g., "2024-01" -> "Sty 2024")
-      const monthNames = [
-        'Sty',
-        'Lut',
-        'Mar',
-        'Kwi',
-        'Maj',
-        'Cze',
-        'Lip',
-        'Sie',
-        'Wrz',
-        'Paź',
-        'Lis',
-        'Gru',
-      ];
-      const displayMonth = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-
-      // Calculate filtered totals for this receipt
-      let receiptQuantity = 0;
-      let receiptAmount = 0;
-
-      receipt.items.forEach(item => {
-        // Filter by selected item code if specified
-        if (selectedItemCode && item.itemCode !== selectedItemCode) {
-          return;
-        }
-        receiptQuantity += item.quantity;
-        receiptAmount += item.total_price;
-      });
-
-      // Only include receipt if it has relevant items
-      if (receiptQuantity > 0) {
-        if (monthlyMap.has(monthKey)) {
-          const existing = monthlyMap.get(monthKey)!;
-          existing.totalQuantity += receiptQuantity;
-          existing.totalAmount += receiptAmount;
-        } else {
-          monthlyMap.set(monthKey, {
-            month: monthKey,
-            displayMonth,
-            totalQuantity: receiptQuantity,
-            totalAmount: receiptAmount,
-          });
-        }
-      }
-    });
-
-    // Convert map to array and sort by month
-    const monthlyArray = Array.from(monthlyMap.values()).sort((a, b) =>
-      a.month.localeCompare(b.month)
-    );
-
-    setMonthlyData(monthlyArray);
-  }, [receipts, selectedItemCode]);
-
-  // Extract unique item codes from receipts
-  const extractItemCodes = useCallback(() => {
-    const itemCodesSet = new Set<string>();
-
-    receipts.forEach(receipt => {
-      receipt.items.forEach(item => {
-        if (item.itemCode) {
-          itemCodesSet.add(item.itemCode);
-        }
-      });
-    });
-
-    const sortedItemCodes = Array.from(itemCodesSet).sort();
-    setAvailableItemCodes(sortedItemCodes);
-  }, [receipts]);
+  // Track if trends tab has been visited to prevent automatic date filter reset
+  const [trendsTabVisited, setTrendsTabVisited] = useState(false);
 
   // Initialize default date range for custom filter
   useEffect(() => {
@@ -418,38 +72,19 @@ const Statistics: React.FC = () => {
     setEndDate(lastDayOfMonth.toISOString().split('T')[0]);
   }, []);
 
-  // Fetch clients on component mount
+  // Auto-select "this year" when monthly trends tab is first selected
   useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
-  // Fetch data when filters change
-  useEffect(() => {
-    fetchReceipts();
-  }, [fetchReceipts]);
-
-  // Process statistics when receipts change
-  useEffect(() => {
-    processStatistics();
-    extractItemCodes();
-  }, [processStatistics, extractItemCodes]);
-
-  // Process client statistics when receipts or clients change
-  useEffect(() => {
-    processClientStatistics();
-  }, [processClientStatistics]);
-
-  // Process monthly statistics when receipts change
-  useEffect(() => {
-    processMonthlyStatistics();
-  }, [processMonthlyStatistics]);
-
-  // Auto-select "this year" when monthly trends tab is active
-  useEffect(() => {
-    if (activeTab === 'trends' && dateFilter !== 'thisYear') {
+    if (
+      activeTab === 'trends' &&
+      !trendsTabVisited &&
+      dateFilter !== 'thisYear'
+    ) {
       setDateFilter('thisYear');
+      setTrendsTabVisited(true);
+    } else if (activeTab === 'trends' && !trendsTabVisited) {
+      setTrendsTabVisited(true);
     }
-  }, [activeTab, dateFilter]);
+  }, [activeTab, trendsTabVisited, dateFilter]);
 
   // Handle date filter change
   const handleDateFilterChange = (filterType: DateFilterType) => {
@@ -536,26 +171,6 @@ const Statistics: React.FC = () => {
     });
   }, [clientStatistics, clientSortField, clientSortDirection]);
 
-  // Calculate totals
-  const totalQuantity = statisticsSummary.reduce(
-    (sum, item) => sum + item.totalQuantity,
-    0
-  );
-  const totalAmount = statisticsSummary.reduce(
-    (sum, item) => sum + item.totalAmount,
-    0
-  );
-
-  // Calculate client totals
-  const totalClientQuantity = clientStatistics.reduce(
-    (sum, client) => sum + client.totalQuantity,
-    0
-  );
-  const totalClientAmount = clientStatistics.reduce(
-    (sum, client) => sum + client.totalAmount,
-    0
-  );
-
   // Excel export function using lazy loading
   const handleExportToExcel = async () => {
     try {
@@ -567,763 +182,50 @@ const Statistics: React.FC = () => {
         Kwota: item.totalAmount,
       }));
 
-      if (excelData.length === 0) {
-        toast.error('Brak danych do eksportu.');
-        return;
-      }
-
-      // Lazy load Excel export utility
+      // Dynamically import the Excel utility
       const { ExcelExportUtility } = await import('../utils/excelExport');
 
-      // Prepare filter information
       const { start, end } = getDateRange(dateFilter);
       const formatDate = (date: Date) => {
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        return `${day}-${month}-${year}`;
       };
 
-      let dateRangeLabel = '';
-      switch (dateFilter) {
-        case 'thisWeek':
-          dateRangeLabel = 'Ten Tydzień';
-          break;
-        case 'lastWeek':
-          dateRangeLabel = 'Poprzedni Tydzień';
-          break;
-        case 'thisMonth':
-          dateRangeLabel = 'Ten Miesiąc';
-          break;
-        case 'lastMonth':
-          dateRangeLabel = 'Poprzedni Miesiąc';
-          break;
-        case 'thisYear':
-          dateRangeLabel = 'Ten Rok';
-          break;
-        case 'custom':
-          dateRangeLabel = 'Zakres Niestandardowy';
-          break;
-      }
+      const filename = `statystyki_${formatDate(start)}_${formatDate(end)}`;
 
-      const filters: Record<string, string> = {
-        Okres: `${dateRangeLabel} (${formatDate(start)} - ${formatDate(end)})`,
-        'Kod produktu': selectedItemCode || 'Wszystkie',
-      };
-
-      const summary = {
-        'Łączna liczba pozycji': excelData.length.toString(),
-        'Łączna ilość': `${totalQuantity.toFixed(2)} kg`,
-        'Łączna kwota': formatCurrency(totalAmount),
-      };
-
-      // Generate filename
-      const filterSuffix =
-        selectedItemCode || dateFilter !== 'thisMonth' ? `-filtered` : '';
-      const filename = `statistics${filterSuffix}-${new Date().toISOString().split('T')[0]}`;
-
-      // Export using the utility
       await ExcelExportUtility.exportToExcel({
         filename,
-        worksheetName: 'Statystyki produktów',
+        worksheetName: 'Statystyki',
         headers: ['Kod produktu', 'Nazwa produktu', 'Ilość', 'Kwota'],
         data: excelData,
-        title: 'Raport statystyk wygenerowany',
-        filters,
-        summary,
+        title: 'Statystyki produktów',
+        subtitle: `Okres: ${formatDate(start)} - ${formatDate(end)}`,
       });
+
+      toast.success('Plik Excel został wygenerowany pomyślnie!');
     } catch (error) {
-      toast.error('Błąd podczas eksportu do Excel. Spróbuj ponownie.');
+      console.error('Błąd podczas eksportu do Excel:', error);
+      toast.error('Wystąpił błąd podczas generowania pliku Excel');
     }
   };
 
+  // Show loading or login prompt if no user
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-gray-500">Zaloguj się, aby wyświetlić statystyki.</p>
       </div>
     );
   }
 
-  const tabs = [
-    {
-      id: 'products' as ReportTab,
-      label: 'Podsumowanie produktów',
-      icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: 'clients' as ReportTab,
-      label: 'Top Klienci',
-      icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: 'trends' as ReportTab,
-      label: 'Kwoty i ilości wg miesięcy',
-      icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: 'monthly' as ReportTab,
-      label: 'Raporty miesięczne',
-      icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
-      ),
-    },
-  ];
-
-  const renderProductsTab = () => (
-    <div className="flex gap-6">
-      <div className="w-1/2 space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              Łączna Ilość
-            </h3>
-            <p className="text-3xl font-bold text-orange-700">
-              {formatQuantity(totalQuantity)} kg
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              Łączna Kwota
-            </h3>
-            <p className="text-3xl font-bold text-green-600">
-              {formatCurrency(totalAmount)}
-            </p>
-          </div>
-        </div>
-
-        {/* Statistics Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Podsumowanie Produktów
-            </h2>
-            <button
-              onClick={handleExportToExcel}
-              disabled={!user || loading || statisticsSummary.length === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14,2 14,8 20,8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="21"></line>
-                <line x1="8" y1="13" x2="16" y2="21"></line>
-              </svg>
-              Eksportuj do Excela
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
-            </div>
-          ) : statisticsSummary.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('itemCode')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Kod produktu</span>
-                        {sortField === 'itemCode' && (
-                          <span className="text-orange-500">
-                            {sortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('itemName')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Nazwa produktu</span>
-                        {sortField === 'itemName' && (
-                          <span className="text-orange-500">
-                            {sortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('totalQuantity')}
-                    >
-                      <div className="flex items-center justify-end space-x-1">
-                        <span>Łączna Ilość</span>
-                        {sortField === 'totalQuantity' && (
-                          <span className="text-orange-500">
-                            {sortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('totalAmount')}
-                    >
-                      <div className="flex items-center justify-end space-x-1">
-                        <span>Łączna Kwota</span>
-                        {sortField === 'totalAmount' && (
-                          <span className="text-orange-500">
-                            {sortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedStatistics.map((item, index) => (
-                    <tr
-                      key={`${item.itemCode}-${item.itemName}`}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.itemCode}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.itemName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatQuantity(item.totalQuantity)} kg
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(item.totalAmount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-gray-500">
-                Nie znaleziono danych dla wybranych filtrów.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right side - Bar Chart */}
-      <div className="w-1/2">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Łączna kwota wg produktu
-            </h2>
-          </div>
-          <div className="p-6">
-            {sortedStatistics.length > 0 ? (
-              <ResponsiveContainer
-                width="100%"
-                height={Math.max(400, sortedStatistics.length * 60)}
-              >
-                <BarChart
-                  layout="vertical"
-                  data={sortedStatistics.map((item, index) => ({
-                    name: item.itemName,
-                    value: item.totalAmount,
-                  }))}
-                  margin={{
-                    top: 20,
-                    right: 100,
-                    left: 5,
-                    bottom: 20,
-                  }}
-                  barCategoryGap={sortedStatistics.length > 10 ? 0.5 : 1}
-                >
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={150}
-                    fontSize={14}
-                    tick={{ fill: '#374151' }}
-                    interval={0}
-                  />
-                  <Bar
-                    dataKey="value"
-                    fill="#3b82f6"
-                    barSize={
-                      sortedStatistics.length > 15
-                        ? 35
-                        : sortedStatistics.length > 10
-                          ? 40
-                          : 50
-                    }
-                    radius={[0, 6, 6, 0]}
-                  >
-                    <LabelList
-                      dataKey="value"
-                      position="right"
-                      formatter={(value: number) => formatCurrency(value)}
-                      style={{
-                        fontSize: '12px',
-                        fill: '#374151',
-                        fontWeight: '500',
-                      }}
-                    />
-                    {sortedStatistics.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={`hsl(${200 + (index % 12) * 25}, 70%, 50%)`}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">
-                  Brak danych dostępnych dla wykresu
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderClientsTab = () => (
-    <div className="flex gap-6">
-      <div className="w-1/2 space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              Łączna Ilość
-            </h3>
-            <p className="text-3xl font-bold text-orange-700">
-              {formatQuantity(totalClientQuantity)} kg
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              Łączna Kwota
-            </h3>
-            <p className="text-3xl font-bold text-green-600">
-              {formatCurrency(totalClientAmount)}
-            </p>
-          </div>
-        </div>
-
-        {/* Client Statistics Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Top 20 Klientów
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
-            </div>
-          ) : sortedClientStatistics.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleClientSort('clientName')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Nazwa klienta</span>
-                        {clientSortField === 'clientName' && (
-                          <span className="text-orange-500">
-                            {clientSortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleClientSort('receiptCount')}
-                    >
-                      <div className="flex items-center justify-end space-x-1">
-                        <span>Liczba kwitów</span>
-                        {clientSortField === 'receiptCount' && (
-                          <span className="text-orange-500">
-                            {clientSortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleClientSort('totalQuantity')}
-                    >
-                      <div className="flex items-center justify-end space-x-1">
-                        <span>Łączna Ilość</span>
-                        {clientSortField === 'totalQuantity' && (
-                          <span className="text-orange-500">
-                            {clientSortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleClientSort('totalAmount')}
-                    >
-                      <div className="flex items-center justify-end space-x-1">
-                        <span>Łączna Kwota</span>
-                        {clientSortField === 'totalAmount' && (
-                          <span className="text-orange-500">
-                            {clientSortDirection === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedClientStatistics.map((client, index) => (
-                    <tr key={client.clientId} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <button
-                          onClick={() => handleClientClick(client.clientId)}
-                          className="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 font-medium"
-                        >
-                          {client.clientName}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {client.receiptCount}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatQuantity(client.totalQuantity)} kg
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {formatCurrency(client.totalAmount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-gray-500">
-                Nie znaleziono danych klientów dla wybranych filtrów.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right side - Bar Chart */}
-      <div className="w-1/2">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">
-              Łączna kwota wg klientów
-            </h2>
-          </div>
-          <div className="p-6">
-            {sortedClientStatistics.length > 0 ? (
-              <ResponsiveContainer
-                width="100%"
-                height={Math.max(400, sortedClientStatistics.length * 60)}
-              >
-                <BarChart
-                  layout="vertical"
-                  data={sortedClientStatistics.map((client, index) => ({
-                    name: client.clientName,
-                    value: client.totalAmount,
-                  }))}
-                  margin={{
-                    top: 20,
-                    right: 100,
-                    left: 5,
-                    bottom: 20,
-                  }}
-                  barCategoryGap={sortedClientStatistics.length > 10 ? 0.5 : 1}
-                >
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={150}
-                    fontSize={14}
-                    tick={{ fill: '#374151' }}
-                    interval={0}
-                  />
-                  <Bar
-                    dataKey="value"
-                    fill="#3b82f6"
-                    barSize={
-                      sortedClientStatistics.length > 15
-                        ? 35
-                        : sortedClientStatistics.length > 10
-                          ? 40
-                          : 50
-                    }
-                    radius={[0, 6, 6, 0]}
-                  >
-                    <LabelList
-                      dataKey="value"
-                      position="right"
-                      formatter={(value: number) => formatCurrency(value)}
-                      style={{
-                        fontSize: '12px',
-                        fill: '#374151',
-                        fontWeight: '500',
-                      }}
-                    />
-                    {sortedClientStatistics.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={`hsl(${120 + (index % 12) * 25}, 70%, 50%)`}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">
-                  Brak danych dostępnych dla wykresu
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderMonthlyTrendsTab = () => (
-    <div className="space-y-6">
-      {/* Controls */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Trendy w czasie
-          </h2>
-
-          {/* View Type Dropdown */}
-          <div className="flex items-center space-x-3">
-            <label className="text-sm font-medium text-gray-700">Widok:</label>
-            <div className="relative">
-              <div className="w-48 px-4 py-2 border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <svg
-                    className="w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                  <span className="text-sm text-gray-700">
-                    {monthlyViewType === 'amount'
-                      ? 'Kwoty (PLN)'
-                      : 'Ilości (kg)'}
-                  </span>
-                </div>
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-
-              <select
-                value={monthlyViewType}
-                onChange={e =>
-                  setMonthlyViewType(e.target.value as MonthlyViewType)
-                }
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              >
-                <option value="amount">Kwoty (PLN)</option>
-                <option value="quantity">Ilości (kg)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-800">
-            {monthlyViewType === 'amount'
-              ? 'Kwoty wg miesięcy'
-              : 'Ilości wg miesięcy'}
-          </h2>
-        </div>
-        <div className="p-6">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
-            </div>
-          ) : monthlyData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart
-                data={monthlyData.map(item => ({
-                  name: item.displayMonth,
-                  value:
-                    monthlyViewType === 'amount'
-                      ? item.totalAmount
-                      : item.totalQuantity,
-                }))}
-                margin={{
-                  top: 20,
-                  right: 30,
-                  left: 20,
-                  bottom: 60,
-                }}
-              >
-                <XAxis
-                  dataKey="name"
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  fontSize={12}
-                  tick={{ fill: '#374151' }}
-                />
-                <YAxis
-                  fontSize={12}
-                  tick={{ fill: '#374151' }}
-                  tickFormatter={(value: number) =>
-                    new Intl.NumberFormat('pl-PL', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                      useGrouping: true,
-                    }).format(value)
-                  }
-                />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-                  <LabelList
-                    dataKey="value"
-                    position="top"
-                    formatter={(value: number) =>
-                      monthlyViewType === 'amount'
-                        ? formatCurrency(value)
-                        : `${formatQuantity(value)} kg`
-                    }
-                    style={{
-                      fontSize: '10px',
-                      fill: '#374151',
-                      fontWeight: '500',
-                    }}
-                  />
-                  {monthlyData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={`hsl(${220 + (index % 8) * 15}, 70%, 50%)`}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-gray-500">
-                Brak danych dostępnych dla wybranego okresu.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
   const renderPlaceholderTab = (tabName: string) => (
-    <div className="bg-white rounded-lg shadow-md p-8">
-      <div className="text-center">
-        <div className="text-6xl mb-4">🚧</div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">
-          {tabName} - W przygotowaniu
-        </h3>
-        <p className="text-gray-500">
-          Ta funkcja będzie dostępna w przyszłych aktualizacjach systemu.
-        </p>
-      </div>
+    <div className="text-center py-12">
+      <h3 className="text-lg font-medium text-gray-800 mb-2">{tabName}</h3>
+      <p className="text-gray-500">
+        Ta funkcja będzie dostępna w przyszłych aktualizacjach systemu.
+      </p>
     </div>
   );
 
@@ -1333,180 +235,21 @@ const Statistics: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800">Statystyki</h1>
       </div>
 
-      {/* Filters and Future Ideas Section */}
+      {/* Filters Section */}
       <div className="flex gap-6">
         <div className="w-1/2">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Filtry</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Date Filter Dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Zakres Dat
-                </label>
-                <div className="relative">
-                  <div className="w-full px-4 py-3 border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center space-x-3">
-                      {/* Calendar Icon */}
-                      <svg
-                        className="w-5 h-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                      {/* Date Range Display */}
-                      <span className="text-sm text-gray-700">
-                        {(() => {
-                          const formatDate = (date: Date) => {
-                            const day = date
-                              .getDate()
-                              .toString()
-                              .padStart(2, '0');
-                            const month = (date.getMonth() + 1)
-                              .toString()
-                              .padStart(2, '0');
-                            const year = date.getFullYear();
-                            return `${day}/${month}/${year}`;
-                          };
-
-                          const { start, end } = getDateRange(dateFilter);
-                          if (dateFilter === 'custom' && startDate && endDate) {
-                            return `${formatDate(new Date(startDate))} - ${formatDate(new Date(endDate))}`;
-                          }
-                          return `${formatDate(start)} - ${formatDate(end)}`;
-                        })()}
-                      </span>
-                    </div>
-                    {/* Dropdown Arrow */}
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-
-                  {/* Hidden Select */}
-                  <select
-                    value={dateFilter}
-                    onChange={e =>
-                      handleDateFilterChange(e.target.value as DateFilterType)
-                    }
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  >
-                    <option value="thisWeek">Ten Tydzień</option>
-                    <option value="lastWeek">Poprzedni Tydzień</option>
-                    <option value="thisMonth">Ten Miesiąc</option>
-                    <option value="lastMonth">Poprzedni Miesiąc</option>
-                    <option value="thisYear">Ten Rok</option>
-                    <option value="custom">Zakres Niestandardowy</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Item Code Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Filtruj po Kodzie Produktu
-                </label>
-                <div className="relative">
-                  <div className="w-full px-4 py-3 border border-gray-300 rounded-md bg-white flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center space-x-3">
-                      {/* Tag Icon */}
-                      <svg
-                        className="w-5 h-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                        />
-                      </svg>
-                      {/* Selected Item Code Display */}
-                      <span className="text-sm text-gray-700">
-                        {selectedItemCode || 'Wszystkie kody produktów'}
-                      </span>
-                    </div>
-                    {/* Dropdown Arrow */}
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </div>
-
-                  {/* Hidden Select */}
-                  <select
-                    value={selectedItemCode}
-                    onChange={e => setSelectedItemCode(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  >
-                    <option value="">Wszystkie kody produktów</option>
-                    {availableItemCodes.map(itemCode => (
-                      <option key={itemCode} value={itemCode}>
-                        {itemCode}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Custom Date Range */}
-            {dateFilter === 'custom' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Początkowa
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Końcowa
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          <StatisticsFilters
+            dateFilter={dateFilter}
+            startDate={startDate}
+            endDate={endDate}
+            selectedItemCode={selectedItemCode}
+            availableItemCodes={availableItemCodes}
+            onDateFilterChange={handleDateFilterChange}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            onItemCodeChange={setSelectedItemCode}
+            getDateRange={getDateRange}
+          />
         </div>
 
         {/* Future Statistics Ideas */}
@@ -1570,32 +313,46 @@ const Statistics: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation and Content */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2 transition-colors duration-200 ${
-                  activeTab === tab.id
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* Tab Content */}
         <div className="p-6">
-          {activeTab === 'products' && renderProductsTab()}
-          {activeTab === 'clients' && renderClientsTab()}
-          {activeTab === 'trends' && renderMonthlyTrendsTab()}
+          {activeTab === 'products' && (
+            <ProductsTab
+              statistics={sortedStatistics}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              loading={loading}
+              onSort={handleSort}
+              onExportToExcel={handleExportToExcel}
+              formatCurrency={formatCurrency}
+              formatQuantity={formatQuantity}
+            />
+          )}
+          {activeTab === 'clients' && (
+            <ClientsTab
+              clientStatistics={sortedClientStatistics}
+              clientSortField={clientSortField}
+              clientSortDirection={clientSortDirection}
+              loading={loading}
+              onSort={handleClientSort}
+              onClientClick={handleClientClick}
+              formatCurrency={formatCurrency}
+              formatQuantity={formatQuantity}
+            />
+          )}
+          {activeTab === 'trends' && (
+            <MonthlyTrendsTab
+              monthlyData={monthlyData}
+              monthlyViewType={monthlyViewType}
+              loading={loading}
+              onViewTypeChange={setMonthlyViewType}
+              formatCurrency={formatCurrency}
+              formatQuantity={formatQuantity}
+            />
+          )}
           {activeTab === 'monthly' &&
             renderPlaceholderTab('Raporty miesięczne')}
         </div>
