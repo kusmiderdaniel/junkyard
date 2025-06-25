@@ -1,0 +1,332 @@
+name: Auto-Version Multi-Environment Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm run test:ci
+
+  version-and-deploy-development:
+    name: Version & Deploy to Development
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: development
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate version for development
+        run: node scripts/generate-version.js development
+
+      - name: Commit version changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
+          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
+          git push
+
+      - name: Create development environment file
+        run: |
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.DEV_FIREBASE_API_KEY }}" > .env.development.local
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.DEV_FIREBASE_PROJECT_ID }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.DEV_FIREBASE_APP_ID }}" >> .env.development.local
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.DEV_FIREBASE_MEASUREMENT_ID }}" >> .env.development.local
+          echo "REACT_APP_ENV=development" >> .env.development.local
+
+      - name: Build for development
+        run: npm run build:dev
+
+      - name: Deploy to Firebase Development
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEV }}'
+          projectId: 'junkyard-dev-9497a'
+          channelId: live
+
+      - name: Log deployment success
+        run: |
+          VERSION=$(node -p "require('./src/version.json').current")
+          echo "✅ Successfully deployed version $VERSION to development"
+
+  version-and-deploy-staging:
+    name: Version & Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate version for staging
+        run: node scripts/generate-version.js staging
+
+      - name: Commit version changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
+          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
+          git push
+
+      - name: Create staging environment file
+        run: |
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.STAGING_FIREBASE_API_KEY }}" > .env.staging.local
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.STAGING_FIREBASE_AUTH_DOMAIN }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.STAGING_FIREBASE_STORAGE_BUCKET }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.STAGING_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.STAGING_FIREBASE_APP_ID }}" >> .env.staging.local
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.STAGING_FIREBASE_MEASUREMENT_ID }}" >> .env.staging.local
+          echo "REACT_APP_ENV=staging" >> .env.staging.local
+
+      - name: Build for staging
+        run: npm run build:staging
+
+      - name: Deploy to Firebase Staging
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}'
+          projectId: 'junkyard-staging'
+          channelId: live
+
+      - name: Log deployment success
+        run: |
+          VERSION=$(node -p "require('./src/version.json').current")
+          echo "✅ Successfully deployed version $VERSION to staging"
+
+  version-and-deploy-production:
+    name: Version & Deploy to Production
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment: production
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate version for production
+        run: node scripts/generate-version.js production
+
+      - name: Commit version changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
+          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
+          git push
+
+      - name: Create production environment file
+        run: |
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.PROD_FIREBASE_API_KEY }}" > .env.production.local
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.PROD_FIREBASE_AUTH_DOMAIN }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.PROD_FIREBASE_PROJECT_ID }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.PROD_FIREBASE_STORAGE_BUCKET }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.PROD_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.PROD_FIREBASE_APP_ID }}" >> .env.production.local
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.PROD_FIREBASE_MEASUREMENT_ID }}" >> .env.production.local
+          echo "REACT_APP_ENV=production" >> .env.production.local
+
+      - name: Build for production
+        run: npm run build:prod
+
+      - name: Deploy to Firebase Production
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}'
+          projectId: 'junkyard-31ade'
+          channelId: live
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          release_name: Release v${{ steps.version.outputs.version }}
+          body: |
+            🚀 **Production Release**
+            
+            **Version:** ${{ steps.version.outputs.version }}
+            **Environment:** Production
+            **Deployed at:** ${{ steps.date.outputs.date }}
+            
+            This release was automatically generated and deployed to production.
+          draft: false
+          prerelease: false
+
+      - name: Log deployment success
+        run: |
+          VERSION=$(node -p "require('./src/version.json').current")
+          echo "🎉 Successfully deployed version $VERSION to production"
+
+  # Manual deployment workflow for any environment
+  manual-version-and-deploy:
+    name: Manual Version & Deploy
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment != 'production'
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate version for ${{ github.event.inputs.environment }}
+        run: node scripts/generate-version.js ${{ github.event.inputs.environment }}
+
+      - name: Commit version changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
+          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
+          git push
+
+      - name: Create environment file
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "development" ]; then
+            echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.DEV_FIREBASE_API_KEY }}" > .env.development.local
+            echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.DEV_FIREBASE_PROJECT_ID }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.DEV_FIREBASE_STORAGE_BUCKET }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.DEV_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.DEV_FIREBASE_APP_ID }}" >> .env.development.local
+            echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.DEV_FIREBASE_MEASUREMENT_ID }}" >> .env.development.local
+            echo "REACT_APP_ENV=development" >> .env.development.local
+          elif [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.STAGING_FIREBASE_API_KEY }}" > .env.staging.local
+            echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.STAGING_FIREBASE_AUTH_DOMAIN }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.STAGING_FIREBASE_PROJECT_ID }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.STAGING_FIREBASE_STORAGE_BUCKET }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.STAGING_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.STAGING_FIREBASE_APP_ID }}" >> .env.staging.local
+            echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.STAGING_FIREBASE_MEASUREMENT_ID }}" >> .env.staging.local
+            echo "REACT_APP_ENV=staging" >> .env.staging.local
+          fi
+
+      - name: Build for ${{ github.event.inputs.environment }}
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "development" ]; then
+            npm run build:dev
+          elif [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            npm run build:staging
+          fi
+
+      - name: Deploy to Firebase ${{ github.event.inputs.environment }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: ${{ github.event.inputs.environment == 'development' && secrets.FIREBASE_SERVICE_ACCOUNT_DEV || secrets.FIREBASE_SERVICE_ACCOUNT_STAGING }}
+          projectId: ${{ github.event.inputs.environment == 'development' && 'junkyard-dev-9497a' || 'junkyard-staging' }}
+          channelId: live
+
+      - name: Log deployment success
+        run: |
+          VERSION=$(node -p "require('./src/version.json').current")
+          echo "✅ Successfully deployed version $VERSION to ${{ github.event.inputs.environment }}" 
