@@ -1,8 +1,8 @@
 {
-  "current": "2.25062025d-dev",
+  "current": "2.25062025e-dev",
   "environment": "development",
-  "generatedAt": "2025-06-25T06:11:21.099Z",
+  "generatedAt": "2025-06-25T06:49:28.013Z",
   "deployments": {
-    "25062025-development": 5
+    "25062025-development": 6
   }
 }
