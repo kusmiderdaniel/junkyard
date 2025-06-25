@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import {
   collection,
@@ -49,6 +50,14 @@ interface StatisticsSummary {
   transactionCount: number;
 }
 
+interface ClientStatistics {
+  clientId: string;
+  clientName: string;
+  receiptCount: number;
+  totalQuantity: number;
+  totalAmount: number;
+}
+
 interface ExcelStatisticsData {
   'Kod produktu': string;
   'Nazwa produktu': string;
@@ -68,6 +77,7 @@ type ReportTab = 'products' | 'clients' | 'trends' | 'monthly';
 
 const Statistics: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // State for filters
   const [dateFilter, setDateFilter] = useState<DateFilterType>('thisMonth');
@@ -83,10 +93,23 @@ const Statistics: React.FC = () => {
   const [availableItemCodes, setAvailableItemCodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Client statistics state
+  const [clientStatistics, setClientStatistics] = useState<ClientStatistics[]>(
+    []
+  );
+  const [clients, setClients] = useState<{ [key: string]: string }>({});
+
   // Sorting state
   const [sortField, setSortField] =
     useState<keyof StatisticsSummary>('totalAmount');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Client sorting state
+  const [clientSortField, setClientSortField] =
+    useState<keyof ClientStatistics>('totalAmount');
+  const [clientSortDirection, setClientSortDirection] = useState<
+    'asc' | 'desc'
+  >('desc');
 
   // Toggle state for future features
   const [showFutureFeatures, setShowFutureFeatures] = useState(false);
@@ -193,6 +216,30 @@ const Statistics: React.FC = () => {
     }
   }, [user, dateFilter, getDateRange]);
 
+  // Fetch clients data
+  const fetchClients = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const clientsQuery = query(
+        collection(db, 'clients'),
+        where('userID', '==', user.uid)
+      );
+
+      const querySnapshot = await getDocs(clientsQuery);
+      const clientsData: { [key: string]: string } = {};
+
+      querySnapshot.docs.forEach(doc => {
+        clientsData[doc.id] = doc.data().name || 'Nieznany klient';
+      });
+
+      setClients(clientsData);
+    } catch (error) {
+      // Clients will remain empty if fetch fails
+      setClients({});
+    }
+  }, [user]);
+
   // Process receipts to create statistics summary
   const processStatistics = useCallback(() => {
     const itemMap = new Map<string, StatisticsSummary>();
@@ -230,6 +277,44 @@ const Statistics: React.FC = () => {
     setStatisticsSummary(summaryArray);
   }, [receipts, selectedItemCode]);
 
+  // Process receipts to create client statistics
+  const processClientStatistics = useCallback(() => {
+    const clientMap = new Map<string, ClientStatistics>();
+
+    receipts.forEach(receipt => {
+      const clientId = receipt.clientId;
+      const clientName = clients[clientId] || 'Nieznany klient';
+
+      // Calculate total quantity for this receipt
+      const receiptQuantity = receipt.items.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+
+      if (clientMap.has(clientId)) {
+        const existing = clientMap.get(clientId)!;
+        existing.receiptCount += 1;
+        existing.totalQuantity += receiptQuantity;
+        existing.totalAmount += receipt.totalAmount;
+      } else {
+        clientMap.set(clientId, {
+          clientId,
+          clientName,
+          receiptCount: 1,
+          totalQuantity: receiptQuantity,
+          totalAmount: receipt.totalAmount,
+        });
+      }
+    });
+
+    // Convert map to array and get top 20 by total amount
+    const clientArray = Array.from(clientMap.values())
+      .sort((a, b) => b.totalAmount - a.totalAmount)
+      .slice(0, 20);
+
+    setClientStatistics(clientArray);
+  }, [receipts, clients]);
+
   // Extract unique item codes from receipts
   const extractItemCodes = useCallback(() => {
     const itemCodesSet = new Set<string>();
@@ -256,6 +341,11 @@ const Statistics: React.FC = () => {
     setEndDate(lastDayOfMonth.toISOString().split('T')[0]);
   }, []);
 
+  // Fetch clients on component mount
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
   // Fetch data when filters change
   useEffect(() => {
     fetchReceipts();
@@ -267,9 +357,19 @@ const Statistics: React.FC = () => {
     extractItemCodes();
   }, [processStatistics, extractItemCodes]);
 
+  // Process client statistics when receipts or clients change
+  useEffect(() => {
+    processClientStatistics();
+  }, [processClientStatistics]);
+
   // Handle date filter change
   const handleDateFilterChange = (filterType: DateFilterType) => {
     setDateFilter(filterType);
+  };
+
+  // Handle client navigation
+  const handleClientClick = (clientId: string) => {
+    navigate(`/clients/${clientId}`);
   };
 
   // Format currency
@@ -301,6 +401,16 @@ const Statistics: React.FC = () => {
     }
   };
 
+  // Client sorting function
+  const handleClientSort = (field: keyof ClientStatistics) => {
+    if (clientSortField === field) {
+      setClientSortDirection(clientSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setClientSortField(field);
+      setClientSortDirection('desc');
+    }
+  };
+
   // Get sorted data
   const sortedStatistics = React.useMemo(() => {
     return [...statisticsSummary].sort((a, b) => {
@@ -318,6 +428,25 @@ const Statistics: React.FC = () => {
     });
   }, [statisticsSummary, sortField, sortDirection]);
 
+  // Get sorted client data
+  const sortedClientStatistics = React.useMemo(() => {
+    return [...clientStatistics].sort((a, b) => {
+      const aValue = a[clientSortField];
+      const bValue = b[clientSortField];
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return clientSortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return clientSortDirection === 'asc'
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+      return 0;
+    });
+  }, [clientStatistics, clientSortField, clientSortDirection]);
+
   // Calculate totals
   const totalQuantity = statisticsSummary.reduce(
     (sum, item) => sum + item.totalQuantity,
@@ -325,6 +454,16 @@ const Statistics: React.FC = () => {
   );
   const totalAmount = statisticsSummary.reduce(
     (sum, item) => sum + item.totalAmount,
+    0
+  );
+
+  // Calculate client totals
+  const totalClientQuantity = clientStatistics.reduce(
+    (sum, client) => sum + client.totalQuantity,
+    0
+  );
+  const totalClientAmount = clientStatistics.reduce(
+    (sum, client) => sum + client.totalAmount,
     0
   );
 
@@ -439,7 +578,7 @@ const Statistics: React.FC = () => {
     },
     {
       id: 'clients' as ReportTab,
-      label: 'Analiza klientów',
+      label: 'Top Klienci',
       icon: (
         <svg
           className="w-4 h-4"
@@ -726,6 +865,216 @@ const Statistics: React.FC = () => {
     </div>
   );
 
+  const renderClientsTab = () => (
+    <div className="flex gap-6">
+      <div className="w-1/2 space-y-6">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Łączna Ilość
+            </h3>
+            <p className="text-3xl font-bold text-orange-700">
+              {formatQuantity(totalClientQuantity)} kg
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              Łączna Kwota
+            </h3>
+            <p className="text-3xl font-bold text-green-600">
+              {formatCurrency(totalClientAmount)}
+            </p>
+          </div>
+        </div>
+
+        {/* Client Statistics Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Top 20 Klientów
+            </h2>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-700"></div>
+            </div>
+          ) : sortedClientStatistics.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleClientSort('clientName')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Nazwa klienta</span>
+                        {clientSortField === 'clientName' && (
+                          <span className="text-orange-500">
+                            {clientSortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleClientSort('receiptCount')}
+                    >
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Liczba kwitów</span>
+                        {clientSortField === 'receiptCount' && (
+                          <span className="text-orange-500">
+                            {clientSortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleClientSort('totalQuantity')}
+                    >
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Łączna Ilość</span>
+                        {clientSortField === 'totalQuantity' && (
+                          <span className="text-orange-500">
+                            {clientSortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleClientSort('totalAmount')}
+                    >
+                      <div className="flex items-center justify-end space-x-1">
+                        <span>Łączna Kwota</span>
+                        {clientSortField === 'totalAmount' && (
+                          <span className="text-orange-500">
+                            {clientSortDirection === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedClientStatistics.map((client, index) => (
+                    <tr key={client.clientId} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <button
+                          onClick={() => handleClientClick(client.clientId)}
+                          className="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 font-medium"
+                        >
+                          {client.clientName}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {client.receiptCount}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {formatQuantity(client.totalQuantity)} kg
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {formatCurrency(client.totalAmount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-32">
+              <p className="text-gray-500">
+                Nie znaleziono danych klientów dla wybranych filtrów.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right side - Bar Chart */}
+      <div className="w-1/2">
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Łączna kwota wg klientów
+            </h2>
+          </div>
+          <div className="p-6">
+            {sortedClientStatistics.length > 0 ? (
+              <ResponsiveContainer
+                width="100%"
+                height={Math.max(400, sortedClientStatistics.length * 60)}
+              >
+                <BarChart
+                  layout="vertical"
+                  data={sortedClientStatistics.map((client, index) => ({
+                    name: client.clientName,
+                    value: client.totalAmount,
+                  }))}
+                  margin={{
+                    top: 20,
+                    right: 100,
+                    left: 5,
+                    bottom: 20,
+                  }}
+                  barCategoryGap={sortedClientStatistics.length > 10 ? 0.5 : 1}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={150}
+                    fontSize={14}
+                    tick={{ fill: '#374151' }}
+                    interval={0}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill="#3b82f6"
+                    barSize={
+                      sortedClientStatistics.length > 15
+                        ? 35
+                        : sortedClientStatistics.length > 10
+                          ? 40
+                          : 50
+                    }
+                    radius={[0, 6, 6, 0]}
+                  >
+                    <LabelList
+                      dataKey="value"
+                      position="right"
+                      formatter={(value: number) => formatCurrency(value)}
+                      style={{
+                        fontSize: '12px',
+                        fill: '#374151',
+                        fontWeight: '500',
+                      }}
+                    />
+                    {sortedClientStatistics.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={`hsl(${120 + (index % 12) * 25}, 70%, 50%)`}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">
+                  Brak danych dostępnych dla wykresu
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderPlaceholderTab = (tabName: string) => (
     <div className="bg-white rounded-lg shadow-md p-8">
       <div className="text-center">
@@ -966,12 +1315,6 @@ const Statistics: React.FC = () => {
               <div className="px-6 pb-6">
                 <div className="space-y-3">
                   <div className="flex items-center text-gray-700">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                    <span className="text-sm">
-                      Top klienci według wartości transakcji
-                    </span>
-                  </div>
-                  <div className="flex items-center text-gray-700">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
                     <span className="text-sm">
                       Historia cen produktów w czasie
@@ -1023,7 +1366,7 @@ const Statistics: React.FC = () => {
         {/* Tab Content */}
         <div className="p-6">
           {activeTab === 'products' && renderProductsTab()}
-          {activeTab === 'clients' && renderPlaceholderTab('Analiza klientów')}
+          {activeTab === 'clients' && renderClientsTab()}
           {activeTab === 'trends' && renderPlaceholderTab('Trendy sprzedaży')}
           {activeTab === 'monthly' &&
             renderPlaceholderTab('Raporty miesięczne')}
