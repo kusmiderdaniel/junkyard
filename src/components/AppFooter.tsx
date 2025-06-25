@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-const APP_VERSION = '2.25062025e';
+const APP_VERSION = '2.25062025f';
 
 const AppFooter: React.FC = () => {
   const { user } = useAuth();
