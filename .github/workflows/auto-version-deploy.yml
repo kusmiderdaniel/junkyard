@@ -115,6 +115,7 @@ jobs:
     environment: staging
     permissions:
       contents: write
+      pull-requests: write
       actions: read
 
     steps:
@@ -135,13 +136,32 @@ jobs:
       - name: Generate version for staging
         run: node scripts/generate-version.js staging
 
-      - name: Commit version changes
+      - name: Create Pull Request for version changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
-          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
-          git push
+          
+          if ! git diff --staged --quiet; then
+            VERSION=$(node -p "require('./src/version.json').current")
+            BRANCH_NAME="auto-version-staging-$VERSION"
+            
+            git checkout -b "$BRANCH_NAME"
+            git commit -m "🔖 Auto-version: $VERSION"
+            git push origin "$BRANCH_NAME"
+            
+            # Create pull request using GitHub CLI
+            gh pr create \
+              --title "🔖 Auto-version: $VERSION" \
+              --body "Automatically generated version update for staging deployment. This PR can be auto-merged." \
+              --base main \
+              --head "$BRANCH_NAME"
+            
+            # Try to enable auto-merge (requires repository settings to allow it)
+            gh pr merge "$BRANCH_NAME" --auto --squash || echo "Auto-merge not available, manual merge required"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create staging environment file
         run: |
@@ -178,6 +198,7 @@ jobs:
     environment: production
     permissions:
       contents: write
+      pull-requests: write
       actions: read
 
     steps:
@@ -198,13 +219,32 @@ jobs:
       - name: Generate version for production
         run: node scripts/generate-version.js production
 
-      - name: Commit version changes
+      - name: Create Pull Request for version changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add src/version.json src/components/AppFooter.tsx src/components/Login.tsx
-          git diff --staged --quiet || git commit -m "🔖 Auto-version: $(node -p "require('./src/version.json').current")"
-          git push
+          
+          if ! git diff --staged --quiet; then
+            VERSION=$(node -p "require('./src/version.json').current")
+            BRANCH_NAME="auto-version-production-$VERSION"
+            
+            git checkout -b "$BRANCH_NAME"
+            git commit -m "🔖 Auto-version: $VERSION"
+            git push origin "$BRANCH_NAME"
+            
+            # Create pull request using GitHub CLI
+            gh pr create \
+              --title "🔖 Auto-version: $VERSION (Production)" \
+              --body "Automatically generated version update for production deployment. This PR can be auto-merged." \
+              --base main \
+              --head "$BRANCH_NAME"
+            
+            # Try to enable auto-merge for production (you may want to disable this for production)
+            echo "Production version PR created. Manual review recommended before merging."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create production environment file
         run: |
