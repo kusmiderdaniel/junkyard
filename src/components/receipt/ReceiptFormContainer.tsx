@@ -102,6 +102,25 @@ const ReceiptFormContainer: React.FC = () => {
     initializeComponent();
   }, [fetchData, loadReceiptData, initializeItems, isEditing, isInitialized]);
 
+  // Process items for saving: apply weight adjustment to quantity
+  const processItemsForSaving = useCallback((items: any[]) => {
+    return items
+      .filter(item => item.productId !== '')
+      .map(item => {
+        const adjustedQuantity = item.quantity * (item.weightAdjustment || 1);
+        return {
+          productId: item.productId,
+          itemName: item.itemName,
+          itemCode: item.itemCode,
+          quantity: adjustedQuantity, // Save the corrected quantity
+          unit: item.unit,
+          sell_price: item.sell_price,
+          buy_price: item.buy_price,
+          total_price: adjustedQuantity * item.buy_price, // Recalculate total with corrected quantity
+        };
+      });
+  }, []);
+
   // Reset form for new receipt
   const resetFormForNewReceipt = useCallback(async () => {
     // Blur any currently focused element to prevent focus conflicts
@@ -187,7 +206,7 @@ const ReceiptFormContainer: React.FC = () => {
         clientId: selectedClient!.id,
         userID: user.uid,
         totalAmount,
-        items: items.filter(item => item.productId !== ''),
+        items: processItemsForSaving(items),
       };
 
       if (isEditing && receiptId) {
@@ -292,7 +311,7 @@ const ReceiptFormContainer: React.FC = () => {
           clientId: selectedClient!.id,
           userID: user.uid,
           totalAmount,
-          items: items.filter(item => item.productId !== ''),
+          items: processItemsForSaving(items),
         };
 
         let savedReceipt;
@@ -387,6 +406,7 @@ const ReceiptFormContainer: React.FC = () => {
       setPrintingAndContinuing,
       setReceiptNumber,
       rateLimitedOps,
+      processItemsForSaving,
     ]
   );
 
@@ -415,7 +435,7 @@ const ReceiptFormContainer: React.FC = () => {
         clientId: selectedClient!.id,
         userID: user.uid,
         totalAmount,
-        items: items.filter(item => item.productId !== ''),
+        items: processItemsForSaving(items),
       };
 
       await viewPDF(currentReceipt, selectedClient!, companyDetails);
@@ -438,6 +458,7 @@ const ReceiptFormContainer: React.FC = () => {
     viewPDF,
     setShowValidationErrors,
     setPrintingAndContinuing,
+    processItemsForSaving,
   ]);
 
   // Keyboard shortcut for print (Cmd/Ctrl + D)
