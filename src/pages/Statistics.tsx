@@ -1313,7 +1313,6 @@ const Statistics: React.FC = () => {
       </div>
     </div>
   );
-
   const renderPlaceholderTab = (tabName: string) => (
     <div className="bg-white rounded-lg shadow-md p-8">
       <div className="text-center">
