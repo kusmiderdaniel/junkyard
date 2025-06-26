@@ -6,6 +6,7 @@ import {
   normalizePolishText,
   createSearchableText,
 } from '../../utils/textUtils';
+import { logger } from '../../utils/logger';
 
 type ImportCollection = 'clients' | 'products' | 'categories' | 'receipts';
 
@@ -277,9 +278,12 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
               receiptGroups.get(receiptKey)!.items.push(item);
             }
           } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error processing receipt line:', error);
-            }
+            logger.error('Error processing receipt line', error, {
+              component: 'DataImportSection',
+              operation: 'importReceipts',
+              userId: user.uid,
+              extra: { lineIndex: i },
+            });
             skippedCount++;
           }
         }
@@ -306,9 +310,12 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             await setDoc(doc(db, 'receipts', receiptKey), receiptData);
             importedCount++;
           } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error importing receipt:', error);
-            }
+            logger.error('Error importing receipt', error, {
+              component: 'DataImportSection',
+              operation: 'importGroupedReceipts',
+              userId: user.uid,
+              extra: { receiptNumber: receiptData.number },
+            });
             skippedCount++;
           }
         }
@@ -335,16 +342,22 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             // Debug: Check field count for clients specifically
             if (
               importCollection === 'clients' &&
-              values.length !== headers.length &&
-              process.env.NODE_ENV === 'development'
+              values.length !== headers.length
             ) {
-              console.warn(
+              logger.warn(
                 `Client import - Line ${i + 2}: Expected ${headers.length} fields, got ${values.length}`,
+                undefined,
                 {
-                  line,
-                  headers,
-                  values,
-                  rawLine: line,
+                  component: 'DataImportSection',
+                  operation: 'importClients',
+                  userId: user.uid,
+                  extra: {
+                    lineNumber: i + 2,
+                    expectedFields: headers.length,
+                    actualFields: values.length,
+                    headers,
+                    values,
+                  },
                 }
               );
             }
@@ -474,17 +487,21 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
                 recordData.companyName ||
                 recordData.number ||
                 `Wiersz ${i + 2}`;
-              if (process.env.NODE_ENV === 'development') {
-                console.warn(
-                  `❌ Pominięto rekord (wiersz ${i + 2}): "${itemName}" - nie spełnia wymagań walidacji dla typu "${importCollection}"`,
-                  {
+              logger.warn(
+                `Pominięto rekord (wiersz ${i + 2}): "${itemName}" - nie spełnia wymagań walidacji dla typu "${importCollection}"`,
+                undefined,
+                {
+                  component: 'DataImportSection',
+                  operation: 'validateRecord',
+                  userId: user.uid,
+                  extra: {
                     lineNumber: i + 2,
-                    recordData,
-                    rawLine: line,
+                    itemName,
+                    importCollection,
                     parsedValues: values,
-                  }
-                );
-              }
+                  },
+                }
+              );
               skippedCount++;
               continue;
             }
@@ -505,9 +522,12 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             }
             importedCount++;
           } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Error adding document:', error);
-            }
+            logger.error('Error adding document', error, {
+              component: 'DataImportSection',
+              operation: 'addDocument',
+              userId: user.uid,
+              extra: { importCollection, lineNumber: i + 2 },
+            });
             skippedCount++;
             continue;
           }
@@ -543,6 +563,42 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
         setImportProgress({ current: 0, total: 0, currentItem: '' });
       }, 2000);
     }
+  };
+
+  const downloadSampleCSV = (type: 'clients' | 'products' | 'receipts') => {
+    let csvContent = '';
+
+    switch (type) {
+      case 'clients':
+        csvContent = 'Nazwa,Adres,Numer Dokumentu,Kod Pocztowy,Miasto\n';
+        csvContent += 'Jan Kowalski,ul. Przykładowa 1,ABC123,00-001,Warszawa\n';
+        csvContent += 'Anna Nowak,ul. Testowa 2,DEF456,30-002,Kraków\n';
+        break;
+      case 'products':
+        csvContent =
+          'Nazwa,Kod,Cena Sprzedaży,Cena Zakupu,Jednostka,Kategoria\n';
+        csvContent += 'Produkt A,PRD001,10.50,8.00,szt,Kategoria A\n';
+        csvContent += 'Produkt B,PRD002,25.99,20.00,kg,Kategoria B\n';
+        break;
+      case 'receipts':
+        csvContent = 'Numer Kwitu,Data,Klient,Łączna Kwota\n';
+        csvContent += '001/2024,2024-01-15,Jan Kowalski,150.00\n';
+        csvContent += '002/2024,2024-01-16,Anna Nowak,275.50\n';
+        break;
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${type}_sample.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+
+    logger.info('Sample CSV downloaded', {
+      component: 'DataImportSection',
+      operation: 'downloadSampleCSV',
+      extra: { type },
+    });
   };
 
   return (
@@ -718,6 +774,72 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
               </>
             )}
           </button>
+        </div>
+
+        {/* Sample CSV Downloads */}
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-3">
+            Pobierz przykładowe pliki CSV:
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              onClick={() => downloadSampleCSV('clients')}
+              className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Klienci
+            </button>
+            <button
+              onClick={() => downloadSampleCSV('products')}
+              className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Produkty
+            </button>
+            <button
+              onClick={() => downloadSampleCSV('receipts')}
+              className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Kwity
+            </button>
+          </div>
         </div>
       </div>
 

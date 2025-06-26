@@ -25,6 +25,7 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { logger } from '../utils/logger';
 
 const INITIAL_ITEMS_COUNT = 5;
 const MAX_ITEMS_COUNT = 15;
@@ -192,7 +193,11 @@ export const useReceiptForm = () => {
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error fetching data:', error);
+        logger.error('Error fetching receipt form data', error, {
+          component: 'useReceiptForm',
+          operation: 'fetchData',
+          userId: user?.uid,
+        });
       }
     } finally {
       setLoading(false);
@@ -244,7 +249,12 @@ export const useReceiptForm = () => {
             } as Client);
           }
         } catch (error) {
-          console.warn('Failed to load client data for editing');
+          logger.warn('Failed to load client data for editing', undefined, {
+            component: 'useReceiptForm',
+            operation: 'loadReceiptData',
+            userId: user?.uid,
+            extra: { receiptId },
+          });
         }
       }
 

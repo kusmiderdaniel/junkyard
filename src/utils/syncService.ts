@@ -17,6 +17,7 @@ import rateLimiter from './rateLimiter';
 import toast from 'react-hot-toast';
 import { idMappingService } from './idMappingService';
 import { cacheUpdateService } from './cacheUpdateService';
+import { logger } from './logger';
 
 export interface SyncResult {
   success: boolean;
@@ -112,12 +113,18 @@ class SyncService {
         await offlineStorage.removePendingOperation(operation.id);
         result.syncedOperations++;
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error(
-            `❌ Failed to sync operation: ${operation.type} (${operation.id})`,
-            error
-          );
-        }
+        logger.error(
+          `Failed to sync operation: ${operation.type} (${operation.id})`,
+          error,
+          {
+            component: 'SyncService',
+            operation: 'syncPendingOperations',
+            extra: {
+              operationType: operation.type,
+              operationId: operation.id,
+            },
+          }
+        );
         result.failedOperations++;
         result.errors.push(
           `${operation.type}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -159,14 +166,20 @@ class SyncService {
       const consistencyCheck =
         await cacheUpdateService.verifyCacheConsistency();
       if (!consistencyCheck.isConsistent) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            '⚠️ Cache consistency issues found:',
-            consistencyCheck.issues
-          );
-          if (consistencyCheck.fixed.length > 0) {
-            console.log('🔧 Auto-fixed issues:', consistencyCheck.fixed);
-          }
+        logger.warn('Cache consistency issues found', undefined, {
+          component: 'SyncService',
+          operation: 'syncPendingOperations',
+          extra: {
+            issues: consistencyCheck.issues,
+            autoFixed: consistencyCheck.fixed,
+          },
+        });
+        if (consistencyCheck.fixed.length > 0) {
+          logger.debug('Auto-fixed cache issues', undefined, {
+            component: 'SyncService',
+            operation: 'syncPendingOperations',
+            extra: { fixed: consistencyCheck.fixed },
+          });
         }
       }
     }

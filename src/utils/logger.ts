@@ -13,13 +13,63 @@ export interface LogContext {
 
 class Logger {
   private isDevelopment = process.env.NODE_ENV === 'development';
+  private isStaging = process.env.REACT_APP_ENV === 'staging';
+
+  /**
+   * Sanitize sensitive data from logs
+   */
+  private sanitize(data: any): any {
+    if (!data) return data;
+
+    if (typeof data === 'string') {
+      // Remove potential email addresses, UIDs, and tokens
+      return data
+        .replace(
+          /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
+          '[EMAIL]'
+        )
+        .replace(/\b[A-Za-z0-9]{20,}\b/g, '[TOKEN]')
+        .replace(/\b[A-Fa-f0-9]{32,}\b/g, '[HASH]');
+    }
+
+    if (typeof data === 'object' && data !== null) {
+      const sensitiveKeys = [
+        'password',
+        'token',
+        'key',
+        'secret',
+        'uid',
+        'email',
+        'phone',
+      ];
+      const sanitized = { ...data };
+
+      for (const key of Object.keys(sanitized)) {
+        if (
+          sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))
+        ) {
+          sanitized[key] = '[REDACTED]';
+        } else if (typeof sanitized[key] === 'object') {
+          sanitized[key] = this.sanitize(sanitized[key]);
+        }
+      }
+
+      return sanitized;
+    }
+
+    return data;
+  }
 
   /**
    * Log info messages (only in development)
    */
   info(message: string, context?: LogContext): void {
     if (this.isDevelopment) {
-      console.log(`ℹ️ ${message}`, context ? this.formatContext(context) : '');
+      const sanitizedContext = context ? this.sanitize(context) : undefined;
+      console.log(
+        `ℹ️ ${message}`,
+        sanitizedContext ? this.formatContext(sanitizedContext) : ''
+      );
     }
   }
 
@@ -28,10 +78,12 @@ class Logger {
    */
   warn(message: string, error?: any, context?: LogContext): void {
     if (this.isDevelopment) {
+      const sanitizedError = this.sanitize(error);
+      const sanitizedContext = context ? this.sanitize(context) : undefined;
       console.warn(
         `⚠️ ${message}`,
-        error,
-        context ? this.formatContext(context) : ''
+        sanitizedError,
+        sanitizedContext ? this.formatContext(sanitizedContext) : ''
       );
     }
   }
@@ -43,10 +95,12 @@ class Logger {
     const isCritical = this.isCriticalError(error);
 
     if (this.isDevelopment || isCritical) {
+      const sanitizedError = this.sanitize(error);
+      const sanitizedContext = context ? this.sanitize(context) : undefined;
       console.error(
         `❌ ${message}`,
-        error,
-        context ? this.formatContext(context) : ''
+        sanitizedError,
+        sanitizedContext ? this.formatContext(sanitizedContext) : ''
       );
     }
   }
@@ -56,10 +110,12 @@ class Logger {
    */
   debug(message: string, data?: any, context?: LogContext): void {
     if (this.isDevelopment) {
+      const sanitizedData = this.sanitize(data);
+      const sanitizedContext = context ? this.sanitize(context) : undefined;
       console.log(
         `🐛 ${message}`,
-        data,
-        context ? this.formatContext(context) : ''
+        sanitizedData,
+        sanitizedContext ? this.formatContext(sanitizedContext) : ''
       );
     }
   }
@@ -69,7 +125,11 @@ class Logger {
    */
   success(message: string, context?: LogContext): void {
     if (this.isDevelopment) {
-      console.log(`✅ ${message}`, context ? this.formatContext(context) : '');
+      const sanitizedContext = context ? this.sanitize(context) : undefined;
+      console.log(
+        `✅ ${message}`,
+        sanitizedContext ? this.formatContext(sanitizedContext) : ''
+      );
     }
   }
 
@@ -104,14 +164,31 @@ class Logger {
   }
 
   /**
-   * Force log critical errors even in production
+   * Force log critical errors even in production (but sanitized)
    */
   critical(message: string, error?: any, context?: LogContext): void {
+    const sanitizedError = this.sanitize(error);
+    const sanitizedContext = context ? this.sanitize(context) : undefined;
     console.error(
       `🚨 CRITICAL: ${message}`,
-      error,
-      context ? this.formatContext(context) : ''
+      sanitizedError,
+      sanitizedContext ? this.formatContext(sanitizedContext) : ''
     );
+  }
+
+  /**
+   * Staging-only logs (visible in staging but not production)
+   */
+  staging(message: string, data?: any, context?: LogContext): void {
+    if (this.isDevelopment || this.isStaging) {
+      const sanitizedData = this.sanitize(data);
+      const sanitizedContext = context ? this.sanitize(context) : undefined;
+      console.log(
+        `🧪 STAGING: ${message}`,
+        sanitizedData,
+        sanitizedContext ? this.formatContext(sanitizedContext) : ''
+      );
+    }
   }
 
   /**
@@ -148,6 +225,18 @@ class Logger {
       error?.message?.includes('auth') ||
       error?.message?.includes('critical')
     );
+  }
+
+  /**
+   * Get current environment info (safe for logging)
+   */
+  getEnvironmentInfo(): Record<string, string> {
+    return {
+      nodeEnv: process.env.NODE_ENV || 'unknown',
+      reactEnv: process.env.REACT_APP_ENV || 'unknown',
+      isDevelopment: this.isDevelopment.toString(),
+      isStaging: this.isStaging.toString(),
+    };
   }
 }
 

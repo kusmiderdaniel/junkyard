@@ -6,6 +6,7 @@
 
 import { offlineStorage } from './offlineStorage';
 import { IdMappingUpdate } from './idMappingService';
+import { logger } from './logger';
 
 export interface CacheUpdateResult {
   success: boolean;
@@ -15,7 +16,149 @@ export interface CacheUpdateResult {
   errors: string[];
 }
 
+interface CacheUpdateConfig {
+  maxRetries: number;
+  retryDelay: number;
+  batchSize: number;
+}
+
 class CacheUpdateService {
+  private config: CacheUpdateConfig = {
+    maxRetries: 3,
+    retryDelay: 1000,
+    batchSize: 50,
+  };
+
+  private isUpdating = false;
+  private updateQueue: Array<() => Promise<void>> = [];
+
+  /**
+   * Updates cache data with retry logic
+   */
+  async updateCache(
+    operation: () => Promise<void>,
+    context: string
+  ): Promise<void> {
+    let attempts = 0;
+
+    while (attempts < this.config.maxRetries) {
+      try {
+        await operation();
+        logger.debug('Cache update successful', undefined, {
+          component: 'CacheUpdateService',
+          operation: 'updateCache',
+          extra: { context, attempts: attempts + 1 },
+        });
+        return;
+      } catch (error) {
+        attempts++;
+
+        if (attempts >= this.config.maxRetries) {
+          logger.error('Cache update failed after max retries', error, {
+            component: 'CacheUpdateService',
+            operation: 'updateCache',
+            extra: {
+              context,
+              maxRetries: this.config.maxRetries,
+              finalAttempt: attempts,
+            },
+          });
+          throw error;
+        }
+
+        // Wait before retry
+        logger.warn('Cache update failed, retrying...', error, {
+          component: 'CacheUpdateService',
+          operation: 'updateCache',
+          extra: {
+            context,
+            attempt: attempts,
+            nextRetryIn: this.config.retryDelay,
+          },
+        });
+
+        await this.delay(this.config.retryDelay * attempts);
+      }
+    }
+  }
+
+  /**
+   * Utility delay function
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Queues a cache update operation
+   */
+  queueUpdate(operation: () => Promise<void>): void {
+    this.updateQueue.push(operation);
+
+    if (!this.isUpdating) {
+      this.processQueue();
+    }
+  }
+
+  /**
+   * Processes the update queue
+   */
+  private async processQueue(): Promise<void> {
+    if (this.isUpdating || this.updateQueue.length === 0) {
+      return;
+    }
+
+    this.isUpdating = true;
+
+    logger.info('Processing cache update queue', {
+      component: 'CacheUpdateService',
+      operation: 'processQueue',
+      extra: { queueLength: this.updateQueue.length },
+    });
+
+    while (this.updateQueue.length > 0) {
+      const batch = this.updateQueue.splice(0, this.config.batchSize);
+
+      try {
+        await Promise.all(
+          batch.map(operation => this.updateCache(operation, 'batch_operation'))
+        );
+      } catch (error) {
+        logger.error('Batch cache update failed', error, {
+          component: 'CacheUpdateService',
+          operation: 'processQueue',
+          extra: { batchSize: batch.length },
+        });
+      }
+    }
+
+    this.isUpdating = false;
+  }
+
+  /**
+   * Forces cache cleanup and refresh (removes invalid entries)
+   */
+  async refreshCache(): Promise<void> {
+    try {
+      // Clean up temporary entries
+      await this.cleanupTempEntries();
+
+      // Verify cache consistency
+      await this.verifyCacheConsistency();
+
+      logger.info('Cache refresh completed', {
+        component: 'CacheUpdateService',
+        operation: 'refreshCache',
+      });
+    } catch (error) {
+      logger.error('Cache refresh failed', error, {
+        component: 'CacheUpdateService',
+        operation: 'refreshCache',
+      });
+      throw error;
+    }
+  }
+
   /**
    * Apply batch ID updates to cache
    */
@@ -126,12 +269,11 @@ class CacheUpdateService {
 
       return false;
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(
-          `Failed to replace ${type} entity ${tempId} → ${realId}:`,
-          error
-        );
-      }
+      logger.error('Failed to replace entity in cache', error, {
+        component: 'CacheUpdateService',
+        operation: 'replaceEntity',
+        extra: { tempId, realId, type },
+      });
       return false;
     }
   }
@@ -160,9 +302,11 @@ class CacheUpdateService {
         await offlineStorage.cacheClients(realClients);
         result.removedTempEntries += removedClients;
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🧹 Cleaned up ${removedClients} temp clients`);
-        }
+        logger.info('Cleaned up temporary clients', {
+          component: 'CacheUpdateService',
+          operation: 'cleanupTempEntries',
+          extra: { removedClients },
+        });
       }
 
       // Clean up temp receipts
@@ -176,9 +320,11 @@ class CacheUpdateService {
         await offlineStorage.cacheReceipts(realReceipts);
         result.removedTempEntries += removedReceipts;
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`🧹 Cleaned up ${removedReceipts} temp receipts`);
-        }
+        logger.info('Cleaned up temporary receipts', {
+          component: 'CacheUpdateService',
+          operation: 'cleanupTempEntries',
+          extra: { removedReceipts },
+        });
       }
     } catch (error) {
       result.success = false;
@@ -326,11 +472,26 @@ class CacheUpdateService {
 
       return false;
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`Failed to remove ${type} entity ${entityId}:`, error);
-      }
+      logger.error('Failed to remove entity from cache', error, {
+        component: 'CacheUpdateService',
+        operation: 'removeEntity',
+        extra: { entityId, type },
+      });
       return false;
     }
+  }
+
+  /**
+   * Updates configuration
+   */
+  updateConfig(newConfig: Partial<CacheUpdateConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+
+    logger.debug('Cache update service config updated', undefined, {
+      component: 'CacheUpdateService',
+      operation: 'updateConfig',
+      extra: { newConfig: this.config },
+    });
   }
 }
 

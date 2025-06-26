@@ -3,14 +3,16 @@
  * Helps with reducing initial bundle size through smart lazy loading
  */
 
+import { logger } from './logger';
+
 // Utility to preload critical chunks when the user is likely to need them
-export const preloadCriticalChunks = () => {
+export const preloadCriticalChunks = (): void => {
   // Only preload in production and when the browser is idle
   if (
     process.env.NODE_ENV === 'production' &&
     'requestIdleCallback' in window
   ) {
-    window.requestIdleCallback(() => {
+    (window as any).requestIdleCallback(() => {
       // Preload ExcelJS for export functionality
       import('../utils/excelExport').catch(() => {
         // Silently fail if module can't be loaded
@@ -19,6 +21,22 @@ export const preloadCriticalChunks = () => {
       // Preload encryption utilities for offline features
       import('../utils/encryption').catch(() => {
         // Silently fail if module can't be loaded
+      });
+
+      // Preload critical route chunks
+      const criticalRoutes = [
+        () => import('../pages/Dashboard'),
+        () => import('../pages/AddReceipt'),
+        () => import('../pages/Receipts'),
+      ];
+
+      criticalRoutes.forEach(importFn => {
+        importFn().catch(error => {
+          logger.warn('Dynamic import failed', error, {
+            component: 'BundleOptimizations',
+            operation: 'preloadCriticalChunks',
+          });
+        });
       });
     });
   }
@@ -32,9 +50,10 @@ export const dynamicImport = async <T>(
   try {
     return await importFn();
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Dynamic import failed:', error);
-    }
+    logger.warn('Dynamic import failed', error, {
+      component: 'BundleOptimizations',
+      operation: 'dynamicImport',
+    });
     if (fallback) {
       return fallback();
     }
@@ -53,51 +72,81 @@ export const loadInputSanitizer = () =>
   dynamicImport(() => import('../utils/inputSanitizer'));
 
 // Bundle size monitor (development only)
-export const logBundleMetrics = () => {
-  if (process.env.NODE_ENV === 'development') {
-    // Track performance metrics
-    setTimeout(() => {
-      const navigation = performance.getEntriesByType(
-        'navigation'
-      )[0] as PerformanceNavigationTiming;
-      if (navigation) {
-        console.groupCollapsed('📊 Bundle Performance Metrics');
-        console.log(
-          'DOM Content Loaded:',
-          `${navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart}ms`
-        );
-        console.log(
-          'Load Complete:',
-          `${navigation.loadEventEnd - navigation.loadEventStart}ms`
-        );
-        console.log(
-          'First Paint:',
-          performance.getEntriesByName('first-paint')[0]?.startTime || 'N/A'
-        );
-        console.log(
-          'First Contentful Paint:',
-          performance.getEntriesByName('first-contentful-paint')[0]
-            ?.startTime || 'N/A'
-        );
-        console.groupEnd();
-      }
-    }, 1000);
+export const logBundleMetrics = (): void => {
+  if ('performance' in window && 'getEntriesByType' in performance) {
+    const navigationEntries = performance.getEntriesByType(
+      'navigation'
+    ) as PerformanceNavigationTiming[];
+    const resourceEntries = performance.getEntriesByType(
+      'resource'
+    ) as PerformanceResourceTiming[];
+
+    if (navigationEntries.length > 0) {
+      const nav = navigationEntries[0];
+
+      logger.debug('Navigation Performance Metrics', undefined, {
+        component: 'BundleOptimizations',
+        operation: 'logBundleMetrics',
+        extra: {
+          domContentLoaded: `${Math.round(nav.domContentLoadedEventEnd - nav.domContentLoadedEventStart)}ms`,
+          loadComplete: `${Math.round(nav.loadEventEnd - nav.loadEventStart)}ms`,
+          firstPaint: nav.responseEnd - nav.fetchStart,
+          transferSize: nav.transferSize,
+        },
+      });
+    }
+
+    // Log largest resources
+    const largeResources = resourceEntries
+      .filter(entry => entry.transferSize > 10000) // > 10KB
+      .sort((a, b) => b.transferSize - a.transferSize)
+      .slice(0, 5);
+
+    if (largeResources.length > 0) {
+      logger.debug('Large Resources', undefined, {
+        component: 'BundleOptimizations',
+        operation: 'logBundleMetrics',
+        extra: {
+          resources: largeResources.map(r => ({
+            name: r.name.split('/').pop(),
+            size: `${Math.round(r.transferSize / 1024)}KB`,
+            duration: `${Math.round(r.duration)}ms`,
+          })),
+        },
+      });
+    }
+
+    // Log core web vitals if available
+    if ('getEntriesByName' in performance) {
+      setTimeout(() => {
+        const paintEntries = performance.getEntriesByType('paint');
+        const navigationEntry = navigationEntries[0];
+
+        logger.debug('Core Web Vitals', undefined, {
+          component: 'BundleOptimizations',
+          operation: 'logBundleMetrics',
+          extra: {
+            fcp: paintEntries.find(
+              entry => entry.name === 'first-contentful-paint'
+            )?.startTime,
+            lcp: 'Need LCP observer',
+            ttfb: navigationEntry.responseStart - navigationEntry.requestStart,
+          },
+        });
+      }, 1000);
+    }
   }
 };
 
 // Optimize resource loading
-export const optimizeResourceLoading = () => {
-  // Preconnect to external resources
-  const preconnectLinks = [
-    'https://fonts.gstatic.com',
-    'https://cdnjs.cloudflare.com',
-  ];
+export const optimizeResourceLoading = (): void => {
+  // Prefetch DNS for external resources
+  const prefetchDomains = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
-  preconnectLinks.forEach(href => {
+  prefetchDomains.forEach(domain => {
     const link = document.createElement('link');
-    link.rel = 'preconnect';
-    link.href = href;
-    link.crossOrigin = 'anonymous';
+    link.rel = 'dns-prefetch';
+    link.href = `//${domain}`;
     document.head.appendChild(link);
   });
 };

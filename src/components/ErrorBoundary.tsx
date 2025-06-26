@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { logger } from '../utils/logger';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -36,21 +37,21 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error details
+    // Log error details for debugging (only in development)
+    logger.error('Error caught by boundary', error, {
+      component: 'ErrorBoundary',
+      operation: 'componentDidCatch',
+      extra: {
+        context: this.props.context || 'Unknown',
+        componentStack: errorInfo.componentStack,
+        errorBoundary: true,
+      },
+    });
+
     this.setState({
       error,
       errorInfo,
     });
-
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.group(`🚨 Error Boundary Caught Error ${this.state.errorId}`);
-      console.error('Error:', error);
-      console.error('Error Info:', errorInfo);
-      console.error('Component Stack:', errorInfo.componentStack);
-      console.error('Context:', this.props.context || 'Unknown');
-      console.groupEnd();
-    }
 
     // Call custom error handler if provided
     if (this.props.onError) {
@@ -66,38 +67,35 @@ class ErrorBoundary extends Component<Props, State> {
       }
     );
 
-    // Log to external service in production (placeholder)
-    if (process.env.NODE_ENV === 'production') {
-      this.logErrorToService(error, errorInfo);
-    }
+    // Log error to external service (this would normally go to a service like Sentry)
+    this.logErrorToService(error, errorInfo);
   }
 
-  private logErrorToService(error: Error, errorInfo: ErrorInfo) {
-    // Placeholder for external error logging service
-    // In a real app, you might send to Sentry, LogRocket, or similar
+  private async logErrorToService(error: Error, errorInfo: ErrorInfo) {
     try {
       const errorData = {
-        errorId: this.state.errorId,
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
-        context: this.props.context,
+        context: this.props.context || 'Unknown',
         userAgent: navigator.userAgent,
         url: window.location.href,
         timestamp: new Date().toISOString(),
         userId: localStorage.getItem('userId') || 'anonymous', // if you store user ID
       };
 
-      // Example: Send to your error tracking service
-      // fetch('/api/errors', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(errorData)
-      // });
+      // In a real app, send to error reporting service
+      // await sendToErrorService(errorData);
 
-      console.log('Error logged:', errorData);
+      logger.debug('Error logged to service', errorData, {
+        component: 'ErrorBoundary',
+        operation: 'logErrorToService',
+      });
     } catch (loggingError) {
-      console.error('Failed to log error:', loggingError);
+      logger.error('Failed to log error to service', loggingError, {
+        component: 'ErrorBoundary',
+        operation: 'logErrorToService',
+      });
     }
   }
 

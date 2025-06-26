@@ -7,6 +7,7 @@ import {
   createSanitizedInputHandler,
   validateInputSafety,
 } from '../../utils/inputSanitizer';
+import { logger } from '../../utils/logger';
 
 interface CompanyDetails {
   companyName: string;
@@ -100,7 +101,11 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({
         }
       } catch (err) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error loading company details:', err);
+          logger.error('Error loading company details', err, {
+            component: 'CompanyDetailsForm',
+            operation: 'fetchCompanyDetails',
+            userId: user?.uid,
+          });
         }
         const errorMessage = 'Nie udało się załadować danych firmy';
         setError(errorMessage);

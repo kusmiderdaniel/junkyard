@@ -7,6 +7,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { offlineStorage } from './offlineStorage';
+import { logger } from './logger';
 
 export const generateReceiptNumber = async (
   selectedDate: string,
@@ -55,8 +56,13 @@ export const generateReceiptNumber = async (
           }
         });
       } catch (error) {
-        console.warn(
-          'Failed to fetch online receipts for numbering, using cached data only'
+        logger.warn(
+          'Failed to fetch online receipts for numbering, using cached data only',
+          error,
+          {
+            component: 'ReceiptNumberGenerator',
+            operation: 'generateReceiptNumber',
+          }
         );
       }
     }

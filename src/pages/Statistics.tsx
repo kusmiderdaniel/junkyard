@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { logger } from '../utils/logger';
 import { useAuth } from '../contexts/AuthContext';
 import { useStatisticsData } from '../hooks/useStatisticsData';
 import {
@@ -206,7 +207,11 @@ const Statistics: React.FC = () => {
 
       toast.success('Plik Excel został wygenerowany pomyślnie!');
     } catch (error) {
-      console.error('Błąd podczas eksportu do Excel:', error);
+      logger.error('Błąd podczas eksportu do Excel', error, {
+        component: 'Statistics',
+        operation: 'handleExportToExcel',
+        userId: user?.uid,
+      });
       toast.error('Wystąpił błąd podczas generowania pliku Excel');
     }
   };

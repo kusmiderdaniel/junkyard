@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { logger } from './utils/logger';
 
 // Emulator imports (only needed when using emulators)
 // import { connectAuthEmulator } from 'firebase/auth';
@@ -36,13 +37,16 @@ if (missingEnvVars.length > 0) {
 }
 
 // Debug: Log the configuration being used (development only)
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔥 Firebase Configuration Debug:');
-  console.log('Project ID:', firebaseConfig.projectId);
-  console.log('Auth Domain:', firebaseConfig.authDomain);
-  console.log('Environment:', process.env.REACT_APP_ENV);
-  console.log('Node Environment:', process.env.NODE_ENV);
-}
+logger.debug('Firebase Configuration Debug', undefined, {
+  component: 'Firebase',
+  operation: 'Initialize',
+  extra: {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+    environment: process.env.REACT_APP_ENV,
+    nodeEnvironment: process.env.NODE_ENV,
+  },
+});
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -66,17 +70,19 @@ if (
   } catch (error) {
     // Emulators might already be connected - this is expected in some cases
     // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.info('Firebase emulators already connected or unavailable');
-    }
+    logger.info('Firebase emulators already connected or unavailable');
   }
 }
 */
 
 // Log Firebase project usage in development only
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔥 Using LIVE Firebase project:', firebaseConfig.projectId);
-}
+logger.info('Using LIVE Firebase project', {
+  component: 'Firebase',
+  operation: 'Initialize',
+  extra: {
+    projectId: firebaseConfig.projectId,
+  },
+});
 
 // Utility function to verify user authentication
 export const getCurrentUserId = () => {

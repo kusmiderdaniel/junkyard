@@ -18,6 +18,7 @@ import {
   Product,
   Category,
 } from '../types/receipt';
+import { logger } from '../utils/logger';
 
 const OfflineDataHandler: React.FC = () => {
   const { user } = useAuth();
@@ -85,15 +86,30 @@ const OfflineDataHandler: React.FC = () => {
       })) as Category[];
       await offlineStorage.cacheCategories(categories);
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          '✅ User data cached successfully for offline use (clients, receipts, company details, products, categories)'
-        );
-      }
+      logger.info('User data cached successfully for offline use', {
+        component: 'OfflineDataHandler',
+        operation: 'cacheUserData',
+        userId: user.uid,
+        extra: {
+          cached: [
+            'clients',
+            'receipts',
+            'company details',
+            'products',
+            'categories',
+          ],
+          clientsCount: clients.length,
+          receiptsCount: receipts.length,
+          productsCount: products.length,
+          categoriesCount: categories.length,
+        },
+      });
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Failed to cache user data:', error);
-      }
+      logger.warn('Failed to cache user data', error, {
+        component: 'OfflineDataHandler',
+        operation: 'cacheUserData',
+        userId: user.uid,
+      });
     }
   }, [user, isOnline]);
 

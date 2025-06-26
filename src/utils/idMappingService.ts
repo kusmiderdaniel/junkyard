@@ -4,6 +4,8 @@
  * Provides a clean interface for managing temporary IDs during offline sync
  */
 
+import { logger } from './logger';
+
 interface IdMapping {
   tempId: string;
   realId: string;
@@ -34,9 +36,11 @@ class IdMappingService {
 
     this.mappings.set(tempId, mapping);
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🗺️ Added ${type} mapping: ${tempId} → ${realId}`);
-    }
+    logger.debug(`Added ${type} mapping: ${tempId} → ${realId}`, undefined, {
+      component: 'IdMappingService',
+      operation: 'addMapping',
+      extra: { tempId, realId, type },
+    });
   }
 
   /**
@@ -89,11 +93,15 @@ class IdMappingService {
         const realId = this.getRealId(resolved[field] as string);
         if (realId) {
           (resolved as any)[field] = realId;
-          if (process.env.NODE_ENV === 'development') {
-            console.log(
-              `🔄 Resolved ${field}: ${(obj as any)[field]} → ${realId}`
-            );
-          }
+          logger.debug(
+            `Resolved ${field}: ${(obj as any)[field]} → ${realId}`,
+            undefined,
+            {
+              component: 'IdMappingService',
+              operation: 'resolveIds',
+              extra: { field, tempId: (obj as any)[field], realId },
+            }
+          );
         }
       }
     }
@@ -132,9 +140,10 @@ class IdMappingService {
     this.mappings.clear();
     this.dependencyGraph.clear();
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🧹 Cleared all ID mappings');
-    }
+    logger.debug('Cleared all ID mappings', undefined, {
+      component: 'IdMappingService',
+      operation: 'clear',
+    });
   }
 
   /**

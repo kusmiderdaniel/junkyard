@@ -13,6 +13,7 @@ import { useOfflineStatus } from '../../hooks/useOfflineStatus';
 import { offlineStorage } from '../../utils/offlineStorage';
 import AddClientModal from '../AddClientModal';
 import { normalizePolishText } from '../../utils/textUtils';
+import { logger } from '../../utils/logger';
 
 interface Client {
   id: string;
@@ -67,9 +68,11 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
 
         if (isOffline) {
           // Load from offline cache only
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📱 Loading clients from offline cache');
-          }
+          logger.debug('Loading clients from offline cache', undefined, {
+            component: 'ClientSelector',
+            operation: 'fetchClients',
+            userId: user.uid,
+          });
           const cachedClients = await offlineStorage.getCachedClients();
           setClients(cachedClients);
         } else {
@@ -92,18 +95,25 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
             await offlineStorage.cacheClients(clientsData);
           } catch (error) {
             // If online fetch fails, fall back to cached data
-            console.warn(
-              'Failed to fetch clients online, using cached data:',
-              error
+            logger.warn(
+              'Failed to fetch clients online, using cached data',
+              error,
+              {
+                component: 'ClientSelector',
+                operation: 'fetchClients',
+                userId: user.uid,
+              }
             );
             const cachedClients = await offlineStorage.getCachedClients();
             setClients(cachedClients);
           }
         }
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error fetching clients:', error);
-        }
+        logger.error('Error fetching clients', error, {
+          component: 'ClientSelector',
+          operation: 'fetchClients',
+          userId: user.uid,
+        });
       } finally {
         setLoading(false);
       }
@@ -225,9 +235,12 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
           );
 
           if (newClient) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('Auto-selecting newly added client:', newClient.name);
-            }
+            logger.debug('Auto-selecting newly added client', undefined, {
+              component: 'ClientSelector',
+              operation: 'handleClientAdded',
+              userId: user?.uid,
+              extra: { clientName: newClient.name, clientId: newClient.id },
+            });
             handleClientSelect(newClient);
             return true;
           }
@@ -236,20 +249,32 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
 
         // Try to find the client immediately
         if (!(await findAndSelectNewClient())) {
-          console.warn(
-            'Could not find newly added client for auto-selection, retrying...'
+          logger.warn(
+            'Could not find newly added client for auto-selection, retrying...',
+            undefined,
+            {
+              component: 'ClientSelector',
+              operation: 'handleClientAdded',
+              userId: user?.uid,
+            }
           );
           // If not found, try once more after a short delay
           setTimeout(async () => {
             if (!(await findAndSelectNewClient())) {
-              console.warn(
-                'Could not find newly added client for auto-selection after retry'
+              logger.warn(
+                'Could not find newly added client for auto-selection after retry',
+                undefined,
+                {
+                  component: 'ClientSelector',
+                  operation: 'handleClientAdded',
+                  userId: user?.uid,
+                }
               );
             }
           }, 300);
         }
       }, 200); // Increased timeout for better reliability
-    }, [fetchClients, handleClientSelect, isOffline]);
+    }, [fetchClients, handleClientSelect, isOffline, user?.uid]);
 
     // Filter clients based on search term using Polish text normalization
     const filteredClients = clients.filter(client => {

@@ -4,6 +4,7 @@
  */
 
 import toast from 'react-hot-toast';
+import { logger } from './logger';
 
 export interface AppError {
   message: string;
@@ -22,15 +23,19 @@ export const handleError = (
   const appError: AppError = {
     message: userMessage,
     code: error?.code || 'UNKNOWN_ERROR',
-    details: shouldLog ? error : undefined
+    details: shouldLog ? error : undefined,
   };
 
   // Only log in development or for critical errors
   if (shouldLog || isCriticalError(error)) {
-    console.error('Application Error:', {
-      userMessage,
-      originalError: error,
-      timestamp: new Date().toISOString()
+    logger.error('Application Error', error, {
+      component: 'ErrorHandler',
+      operation: 'handleError',
+      extra: {
+        userMessage,
+        isCritical: isCriticalError(error),
+        timestamp: new Date().toISOString(),
+      },
     });
   }
 
@@ -45,12 +50,14 @@ const isCriticalError = (error: any): boolean => {
     'permission-denied',
     'unauthorized',
     'network-request-failed',
-    'internal'
+    'internal',
   ];
-  
-  return criticalCodes.includes(error?.code) || 
-         error?.message?.includes('security') ||
-         error?.message?.includes('auth');
+
+  return (
+    criticalCodes.includes(error?.code) ||
+    error?.message?.includes('security') ||
+    error?.message?.includes('auth')
+  );
 };
 
 /**
@@ -96,11 +103,10 @@ export const showInfoMessage = (message: string): void => {
 /**
  * Silent error handler for non-critical operations
  */
-export const handleSilentError = (
-  error: any,
-  context: string
-): void => {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn(`Silent error in ${context}:`, error);
-  }
-}; 
+export const handleSilentError = (error: any, context: string): void => {
+  logger.warn(`Silent error in ${context}`, error, {
+    component: 'ErrorHandler',
+    operation: 'handleSilentError',
+    extra: { context },
+  });
+};

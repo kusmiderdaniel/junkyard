@@ -1,94 +1,56 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { logger } from '../utils/logger';
 
+/**
+ * Debug component for authentication information
+ * To use: Add this component to any page and click the "Trigger Error" button
+ */
 const AuthDebug: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user: currentUser } = useAuth();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, currentUser => {
-      setUser(currentUser);
-      setLoading(false);
+  const handleDebugInfo = () => {
+    const debugInfo = {
+      environment: process.env.REACT_APP_ENV || 'unknown',
+      nodeEnv: process.env.NODE_ENV || 'unknown',
+      projectId: auth.app.options.projectId,
+      authDomain: auth.app.options.authDomain,
+      userInfo: currentUser
+        ? {
+            hasUser: true,
+            emailVerified: currentUser.emailVerified,
+            providerCount: currentUser.providerData.length,
+            creationTime: currentUser.metadata.creationTime,
+            lastSignInTime: currentUser.metadata.lastSignInTime,
+          }
+        : { hasUser: false },
+    };
 
-      // Debug info (development only)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 Auth Debug Info:');
-        console.log('Current User:', currentUser);
-        console.log('Project ID from config:', auth.app.options.projectId);
-        console.log('Auth Domain from config:', auth.app.options.authDomain);
-
-        if (currentUser) {
-          console.log('User UID:', currentUser.uid);
-          console.log('User Email:', currentUser.email);
-          console.log('User Provider Data:', currentUser.providerData);
-        }
-      }
+    logger.debug('Auth Debug Info', debugInfo, {
+      component: 'AuthDebug',
+      operation: 'handleDebugInfo',
     });
+  };
 
-    return () => unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="p-4 bg-blue-100 border border-blue-300 rounded">
-        Loading auth state...
-      </div>
-    );
+  // Only render in development
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
   }
 
   return (
-    <div className="p-4 bg-gray-100 border border-gray-300 rounded mb-4">
-      <h3 className="font-bold text-lg mb-2">🔐 Authentication Debug Info</h3>
-      <div className="space-y-2 text-sm">
-        <div>
-          <strong>Firebase Project ID:</strong> {auth.app.options.projectId}
-        </div>
-        <div>
-          <strong>Auth Domain:</strong> {auth.app.options.authDomain}
-        </div>
-        <div>
-          <strong>Environment:</strong> {process.env.REACT_APP_ENV}
-        </div>
-        <div>
-          <strong>Node Environment:</strong> {process.env.NODE_ENV}
-        </div>
-
-        <hr className="my-2" />
-
-        <div>
-          <strong>Authentication Status:</strong>
-        </div>
-        {user ? (
-          <div className="ml-4 space-y-1 text-green-700">
-            <div>✅ User is logged in</div>
-            <div>
-              <strong>UID:</strong> {user.uid}
-            </div>
-            <div>
-              <strong>Email:</strong> {user.email}
-            </div>
-            <div>
-              <strong>Display Name:</strong> {user.displayName || 'Not set'}
-            </div>
-            <div>
-              <strong>Provider:</strong>{' '}
-              {user.providerData[0]?.providerId || 'Unknown'}
-            </div>
-          </div>
-        ) : (
-          <div className="ml-4 text-red-700">❌ No user logged in</div>
-        )}
-
-        <hr className="my-2" />
-
-        <div className="text-xs text-gray-600">
-          <strong>Expected for Development:</strong>
-          <br />
-          Project ID should be: {process.env.REACT_APP_FIREBASE_PROJECT_ID}
-          <br />
-          Auth Domain should be: {process.env.REACT_APP_FIREBASE_AUTH_DOMAIN}
-        </div>
+    <div className="fixed bottom-4 right-4 bg-yellow-100 p-4 rounded-lg shadow-lg border border-yellow-300">
+      <h3 className="text-sm font-semibold text-yellow-800 mb-2">Auth Debug</h3>
+      <div className="text-xs text-yellow-700 space-y-1">
+        <div>Status: {currentUser ? 'Authenticated' : 'Not authenticated'}</div>
+        <div>Env: {process.env.REACT_APP_ENV || 'unknown'}</div>
+        <div>Project: {auth.app.options.projectId}</div>
+        <button
+          onClick={handleDebugInfo}
+          className="mt-2 px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-xs"
+        >
+          Log Debug Info
+        </button>
       </div>
     </div>
   );

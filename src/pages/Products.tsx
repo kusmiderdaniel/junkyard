@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { offlineStorage } from '../utils/offlineStorage';
 import { Product, Category } from '../types/receipt';
+import { logger } from '../utils/logger';
 import CategoryModal from '../components/products/CategoryModal';
 import ProductModal from '../components/products/ProductModal';
 import ProductsTable from '../components/products/ProductsTable';
@@ -103,9 +104,14 @@ const Products: React.FC = () => {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            'Online products/categories fetch failed, trying cached data:',
-            error
+          logger.warn(
+            'Online products/categories fetch failed, trying cached data',
+            error,
+            {
+              component: 'Products',
+              operation: 'fetchData',
+              userId: user.uid,
+            }
           );
         }
         const cachedCategories = await offlineStorage.getCachedCategories();

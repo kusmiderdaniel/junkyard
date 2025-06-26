@@ -7,6 +7,7 @@ import {
 } from '../types/receipt';
 import { encryptData, decryptData, isEncryptionAvailable } from './encryption';
 import { getCurrentUserId } from '../firebase';
+import { logger } from './logger';
 
 // Types for offline operations queue
 export interface PendingOperation {
@@ -372,9 +373,11 @@ const deduplicateAndCleanEntries = <T extends { id: string }>(
   for (const entry of sortedEntries) {
     // Skip if we've already seen this exact ID
     if (seenIds.has(entry.id)) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🧹 Skipping duplicate ID: ${entry.id}`);
-      }
+      logger.debug(`Skipping duplicate ID: ${entry.id}`, undefined, {
+        component: 'OfflineStorage',
+        operation: 'deduplicateAndCleanEntries',
+        extra: { duplicateId: entry.id },
+      });
       continue;
     }
 
@@ -401,11 +404,15 @@ const deduplicateAndCleanEntries = <T extends { id: string }>(
 
     // Skip if we've seen this business combination before
     if (businessKey && seenBusinessKeys.has(businessKey)) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          `🧹 Skipping duplicate business key: ${businessKey} (ID: ${entry.id})`
-        );
-      }
+      logger.debug(
+        `Skipping duplicate business key: ${businessKey} (ID: ${entry.id})`,
+        undefined,
+        {
+          component: 'OfflineStorage',
+          operation: 'deduplicateAndCleanEntries',
+          extra: { businessKey, entryId: entry.id },
+        }
+      );
       continue;
     }
 
@@ -417,12 +424,15 @@ const deduplicateAndCleanEntries = <T extends { id: string }>(
     result.push(entry);
   }
 
-  if (
-    process.env.NODE_ENV === 'development' &&
-    result.length !== entries.length
-  ) {
-    console.log(
-      `🧹 Deduplication: ${entries.length} → ${result.length} entries`
+  if (result.length !== entries.length) {
+    logger.debug(
+      `Deduplication: ${entries.length} → ${result.length} entries`,
+      undefined,
+      {
+        component: 'OfflineStorage',
+        operation: 'deduplicateAndCleanEntries',
+        extra: { original: entries.length, deduplicated: result.length },
+      }
     );
   }
 

@@ -54,7 +54,8 @@
     "version:dev": "node scripts/generate-version.js development",
     "version:staging": "node scripts/generate-version.js staging",
     "version:prod": "node scripts/generate-version.js production",
-    "version:show": "node -p \"require('./src/version.json').current\""
+    "version:show": "node -p \"require('./src/version.json').current\"",
+    "check:console": "node scripts/check-console-statements.js"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

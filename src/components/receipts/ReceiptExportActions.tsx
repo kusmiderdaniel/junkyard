@@ -11,6 +11,7 @@ import {
   CompanyDetails,
   ExcelRowData,
 } from '../../types/receipt';
+import { logger } from '../../utils/logger';
 
 interface ReceiptExportActionsProps {
   user: any;
@@ -140,7 +141,10 @@ export const useReceiptExportActions = ({
       URL.revokeObjectURL(url);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error generating summary PDF:', error);
+        logger.error('Error generating summary PDF', error, {
+          component: 'ReceiptExportActions',
+          operation: 'handlePrintSummary',
+        });
       }
       toast.error('Wystąpił błąd podczas generowania podsumowania PDF.');
     }

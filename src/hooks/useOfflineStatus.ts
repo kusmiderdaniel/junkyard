@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 
 export interface OfflineStatus {
   isOnline: boolean;
@@ -13,10 +14,17 @@ export const useOfflineStatus = (): OfflineStatus => {
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
+      logger.info('App is back online', {
+        component: 'useOfflineStatus',
+        operation: 'handleOnline',
+      });
       if (wasOffline) {
         // App was offline and is now back online
         if (process.env.NODE_ENV === 'development') {
-          console.log('App is back online');
+          logger.info('App connectivity restored', {
+            component: 'useOfflineStatus',
+            operation: 'handleOnline',
+          });
         }
       }
     };
@@ -24,8 +32,15 @@ export const useOfflineStatus = (): OfflineStatus => {
     const handleOffline = () => {
       setIsOnline(false);
       setWasOffline(true);
+      logger.info('App is now offline', {
+        component: 'useOfflineStatus',
+        operation: 'handleOffline',
+      });
       if (process.env.NODE_ENV === 'development') {
-        console.log('App is now offline');
+        logger.info('App connectivity lost', {
+          component: 'useOfflineStatus',
+          operation: 'handleOffline',
+        });
       }
     };
 
