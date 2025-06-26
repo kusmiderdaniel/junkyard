@@ -1,38 +1,8 @@
 import React from 'react';
-
-interface ReceiptItem {
-  productId: string;
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  weightAdjustment: number;
-  total_price: number;
-}
-
-interface Receipt {
-  id: string;
-  number: string;
-  date: Date;
-  clientId: string;
-  clientName?: string;
-  userID: string;
-  totalAmount: number;
-  items: ReceiptItem[];
-}
-
-interface Client {
-  id: string;
-  name: string;
-  address: string;
-  documentNumber: string;
-  postalCode?: string;
-  city?: string;
-  fullAddress?: string;
-  searchableText?: string;
-}
+import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
+import withErrorBoundary from '../withErrorBoundary';
+import { Receipt, Client } from '../../types/receipt';
 
 interface ReceiptsTableProps {
   receipts: Receipt[];
@@ -337,4 +307,19 @@ const ReceiptsTable: React.FC<ReceiptsTableProps> = ({
   );
 };
 
-export default ReceiptsTable;
+export default withErrorBoundary(ReceiptsTable, {
+  context: 'Receipts Table',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'Receipts table error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'ReceiptsTable',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

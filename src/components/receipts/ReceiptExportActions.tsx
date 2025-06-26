@@ -12,7 +12,7 @@ import {
   ExcelRowData,
 } from '../../types/receipt';
 import { logger } from '../../utils/logger';
-
+import { isErrorWithMessage } from '../../types/common';
 interface ReceiptExportActionsProps {
   user: any;
   selectedMonth: string;
@@ -141,10 +141,14 @@ export const useReceiptExportActions = ({
       URL.revokeObjectURL(url);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Error generating summary PDF', error, {
-          component: 'ReceiptExportActions',
-          operation: 'handlePrintSummary',
-        });
+        logger.error(
+          'Error generating summary PDF',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ReceiptExportActions',
+            operation: 'handlePrintSummary',
+          }
+        );
       }
       toast.error('Wystąpił błąd podczas generowania podsumowania PDF.');
     }

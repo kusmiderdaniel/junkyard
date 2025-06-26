@@ -36,15 +36,14 @@ if (missingEnvVars.length > 0) {
   );
 }
 
-// Debug: Log the configuration being used (development only)
-logger.debug('Firebase Configuration Debug', undefined, {
+// Firebase configuration validated and ready
+logger.debug('Firebase configuration validated', undefined, {
   component: 'Firebase',
   operation: 'Initialize',
   extra: {
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain,
     environment: process.env.REACT_APP_ENV,
     nodeEnvironment: process.env.NODE_ENV,
+    configurationValid: true,
   },
 });
 
@@ -75,12 +74,13 @@ if (
 }
 */
 
-// Log Firebase project usage in development only
-logger.info('Using LIVE Firebase project', {
+// Log Firebase initialization status
+logger.info('Firebase services initialized', {
   component: 'Firebase',
   operation: 'Initialize',
   extra: {
-    projectId: firebaseConfig.projectId,
+    mode: 'production',
+    servicesReady: true,
   },
 });
 

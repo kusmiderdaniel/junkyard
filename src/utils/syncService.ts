@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 import { idMappingService } from './idMappingService';
 import { cacheUpdateService } from './cacheUpdateService';
 import { logger } from './logger';
-
+import { isErrorWithMessage } from '../types/common';
 export interface SyncResult {
   success: boolean;
   syncedOperations: number;
@@ -115,7 +115,7 @@ class SyncService {
       } catch (error) {
         logger.error(
           `Failed to sync operation: ${operation.type} (${operation.id})`,
-          error,
+          isErrorWithMessage(error) ? error : undefined,
           {
             component: 'SyncService',
             operation: 'syncPendingOperations',

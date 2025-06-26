@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
+import { collection, addDoc, setDoc, Timestamp, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { collection, addDoc, setDoc, doc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   normalizePolishText,
   createSearchableText,
 } from '../../utils/textUtils';
 import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
+import withErrorBoundary from '../withErrorBoundary';
 
 type ImportCollection = 'clients' | 'products' | 'categories' | 'receipts';
+
+// CSV import record type - all values are strings initially from CSV
+interface CSVRecord {
+  [key: string]: string;
+}
 
 interface DataImportSectionProps {
   onSuccess?: (message: string) => void;
@@ -211,7 +218,7 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             const values = parseCSVLine(line, expectedFieldCount).map(v =>
               v.trim()
             );
-            const recordData: any = {};
+            const recordData: CSVRecord = {};
             headers.forEach((header, index) => {
               recordData[header] = values[index] || '';
             });
@@ -258,7 +265,8 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             // Add item to receipt if it has content
             const itemName = recordData['Nazwa Produktu'] || '';
             const itemCode = recordData['Kod Produktu'] || '';
-            const quantity = recordData['Ilość'] || 0;
+            const quantityStr = recordData['Ilość'] || '0';
+            const quantity = parseFloat(quantityStr) || 0;
 
             if (itemName || itemCode || quantity > 0) {
               const unit = recordData['Jednostka'] || '';
@@ -278,12 +286,16 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
               receiptGroups.get(receiptKey)!.items.push(item);
             }
           } catch (error) {
-            logger.error('Error processing receipt line', error, {
-              component: 'DataImportSection',
-              operation: 'importReceipts',
-              userId: user.uid,
-              extra: { lineIndex: i },
-            });
+            logger.error(
+              'Error processing receipt line',
+              isErrorWithMessage(error) ? error : undefined,
+              {
+                component: 'DataImportSection',
+                operation: 'importReceipts',
+                userId: user.uid,
+                extra: { lineIndex: i },
+              }
+            );
             skippedCount++;
           }
         }
@@ -310,12 +322,16 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             await setDoc(doc(db, 'receipts', receiptKey), receiptData);
             importedCount++;
           } catch (error) {
-            logger.error('Error importing receipt', error, {
-              component: 'DataImportSection',
-              operation: 'importGroupedReceipts',
-              userId: user.uid,
-              extra: { receiptNumber: receiptData.number },
-            });
+            logger.error(
+              'Error importing receipt',
+              isErrorWithMessage(error) ? error : undefined,
+              {
+                component: 'DataImportSection',
+                operation: 'importGroupedReceipts',
+                userId: user.uid,
+                extra: { receiptNumber: receiptData.number },
+              }
+            );
             skippedCount++;
           }
         }
@@ -522,12 +538,16 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
             }
             importedCount++;
           } catch (error) {
-            logger.error('Error adding document', error, {
-              component: 'DataImportSection',
-              operation: 'addDocument',
-              userId: user.uid,
-              extra: { importCollection, lineNumber: i + 2 },
-            });
+            logger.error(
+              'Error adding document',
+              isErrorWithMessage(error) ? error : undefined,
+              {
+                component: 'DataImportSection',
+                operation: 'addDocument',
+                userId: user.uid,
+                extra: { importCollection, lineNumber: i + 2 },
+              }
+            );
             skippedCount++;
             continue;
           }
@@ -899,4 +919,19 @@ const DataImportSection: React.FC<DataImportSectionProps> = ({
   );
 };
 
-export default DataImportSection;
+export default withErrorBoundary(DataImportSection, {
+  context: 'Data Import',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'Data import error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'DataImportSection',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

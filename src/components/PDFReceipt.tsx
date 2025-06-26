@@ -8,6 +8,10 @@ import {
   pdf,
   Font,
 } from '@react-pdf/renderer';
+import { Receipt, Client, CompanyDetails } from '../types/receipt';
+import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
+import withErrorBoundary from './withErrorBoundary';
 
 // Register Roboto font which has excellent Polish character support
 Font.register({
@@ -23,47 +27,6 @@ Font.register({
     },
   ],
 });
-
-interface CompanyDetails {
-  companyName: string;
-  numberNIP: string;
-  numberREGON: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  email: string;
-  phoneNumber: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  address: string;
-  documentNumber: string;
-  postalCode?: string;
-  city?: string;
-  fullAddress?: string;
-}
-
-interface ReceiptItem {
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  total_price: number;
-}
-
-interface Receipt {
-  id: string;
-  number: string;
-  date: Date;
-  clientId: string;
-  userID: string;
-  totalAmount: number;
-  items: ReceiptItem[];
-}
 
 interface PDFReceiptProps {
   receipt: Receipt;
@@ -488,4 +451,19 @@ export const usePDFReceipt = () => {
   return { generatePDF, viewPDF };
 };
 
-export default PDFReceiptDocument;
+export default withErrorBoundary(PDFReceiptDocument, {
+  context: 'PDF Generation',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'PDF generation error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'PDFReceiptDocument',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

@@ -4,7 +4,7 @@
  */
 
 import { logger } from './logger';
-
+import { isErrorWithMessage } from '../types/common';
 // Utility to preload critical chunks when the user is likely to need them
 export const preloadCriticalChunks = (): void => {
   // Only preload in production and when the browser is idle
@@ -32,10 +32,14 @@ export const preloadCriticalChunks = (): void => {
 
       criticalRoutes.forEach(importFn => {
         importFn().catch(error => {
-          logger.warn('Dynamic import failed', error, {
-            component: 'BundleOptimizations',
-            operation: 'preloadCriticalChunks',
-          });
+          logger.warn(
+            'Dynamic import failed',
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'BundleOptimizations',
+              operation: 'preloadCriticalChunks',
+            }
+          );
         });
       });
     });
@@ -50,10 +54,14 @@ export const dynamicImport = async <T>(
   try {
     return await importFn();
   } catch (error) {
-    logger.warn('Dynamic import failed', error, {
-      component: 'BundleOptimizations',
-      operation: 'dynamicImport',
-    });
+    logger.warn(
+      'Dynamic import failed',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'BundleOptimizations',
+        operation: 'dynamicImport',
+      }
+    );
     if (fallback) {
       return fallback();
     }

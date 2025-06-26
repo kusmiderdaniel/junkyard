@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -38,15 +39,19 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log error details for debugging (only in development)
-    logger.error('Error caught by boundary', error, {
-      component: 'ErrorBoundary',
-      operation: 'componentDidCatch',
-      extra: {
-        context: this.props.context || 'Unknown',
-        componentStack: errorInfo.componentStack,
-        errorBoundary: true,
-      },
-    });
+    logger.error(
+      'Error caught by boundary',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'ErrorBoundary',
+        operation: 'componentDidCatch',
+        extra: {
+          context: this.props.context || 'Unknown',
+          componentStack: errorInfo.componentStack,
+          errorBoundary: true,
+        },
+      }
+    );
 
     this.setState({
       error,
@@ -92,10 +97,14 @@ class ErrorBoundary extends Component<Props, State> {
         operation: 'logErrorToService',
       });
     } catch (loggingError) {
-      logger.error('Failed to log error to service', loggingError, {
-        component: 'ErrorBoundary',
-        operation: 'logErrorToService',
-      });
+      logger.error(
+        'Failed to log error to service',
+        isErrorWithMessage(loggingError) ? loggingError : undefined,
+        {
+          component: 'ErrorBoundary',
+          operation: 'logErrorToService',
+        }
+      );
     }
   }
 

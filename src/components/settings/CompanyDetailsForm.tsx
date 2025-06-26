@@ -8,7 +8,7 @@ import {
   validateInputSafety,
 } from '../../utils/inputSanitizer';
 import { logger } from '../../utils/logger';
-
+import { isErrorWithMessage } from '../../types/common';
 interface CompanyDetails {
   companyName: string;
   numberNIP: string;
@@ -101,11 +101,15 @@ const CompanyDetailsForm: React.FC<CompanyDetailsFormProps> = ({
         }
       } catch (err) {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Error loading company details', err, {
-            component: 'CompanyDetailsForm',
-            operation: 'fetchCompanyDetails',
-            userId: user?.uid,
-          });
+          logger.error(
+            'Error loading company details',
+            isErrorWithMessage(err) ? err : undefined,
+            {
+              component: 'CompanyDetailsForm',
+              operation: 'fetchCompanyDetails',
+              userId: user?.uid,
+            }
+          );
         }
         const errorMessage = 'Nie udało się załadować danych firmy';
         setError(errorMessage);

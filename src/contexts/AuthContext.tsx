@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { logger } from '../utils/logger';
-
+import { isErrorWithMessage } from '../types/common';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -28,10 +28,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       await signOut(auth);
     } catch (error) {
       // Silent error - logout attempt failed but user will see they're still logged in
-      logger.warn('Logout failed', error, {
-        component: 'AuthContext',
-        operation: 'logout',
-      });
+      logger.warn(
+        'Logout failed',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'AuthContext',
+          operation: 'logout',
+        }
+      );
     }
   };
 

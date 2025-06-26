@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { normalizePolishText, createSearchableText } from './textUtils';
 import { logger } from './logger';
-
+import { isErrorWithMessage } from '../types/common';
 interface Client {
   id: string;
   name: string;
@@ -99,12 +99,16 @@ export const migrateClientSearchFields = async (
           results.updated++;
         } catch (error) {
           const errorMsg = `Failed to prepare update for client ${client.id}: ${error}`;
-          logger.error(errorMsg, error, {
-            component: 'DataMigration',
-            operation: 'migrateClientSearchFields',
-            userId: userID,
-            extra: { clientId: client.id },
-          });
+          logger.error(
+            errorMsg,
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'DataMigration',
+              operation: 'migrateClientSearchFields',
+              userId: userID,
+              extra: { clientId: client.id },
+            }
+          );
           results.errors.push(errorMsg);
         }
       });
@@ -112,7 +116,7 @@ export const migrateClientSearchFields = async (
       try {
         await batch.commit();
         const errorMsg = `Batch ${Math.floor(i / batchSize) + 1} completed successfully`;
-        logger.success(errorMsg, {
+        logger.info(errorMsg, {
           component: 'DataMigration',
           operation: 'migrateClientSearchFields',
           userId: userID,
@@ -123,7 +127,7 @@ export const migrateClientSearchFields = async (
         });
       } catch (error) {
         const errorMsg = `Failed to commit batch ${Math.floor(i / batchSize) + 1}: ${error}`;
-        logger.error(errorMsg, error, {
+        logger.error(errorMsg, isErrorWithMessage(error) ? error : undefined, {
           component: 'DataMigration',
           operation: 'migrateClientSearchFields',
           userId: userID,
@@ -136,7 +140,7 @@ export const migrateClientSearchFields = async (
     }
 
     const successMsg = `Migration completed. Updated ${results.updated} clients.`;
-    logger.success(successMsg, {
+    logger.info(successMsg, {
       component: 'DataMigration',
       operation: 'migrateClientSearchFields',
       userId: userID,
@@ -160,7 +164,7 @@ export const migrateClientSearchFields = async (
     }
   } catch (error) {
     const errorMsg = `Migration failed: ${error}`;
-    logger.error(errorMsg, error, {
+    logger.error(errorMsg, isErrorWithMessage(error) ? error : undefined, {
       component: 'DataMigration',
       operation: 'migrateClientSearchFields',
       userId: userID,
@@ -195,11 +199,15 @@ export const checkMigrationNeeded = async (
 
     return false;
   } catch (error) {
-    logger.error('Error checking migration status', error, {
-      component: 'DataMigration',
-      operation: 'checkMigrationNeeded',
-      userId: userID,
-    });
+    logger.error(
+      'Error checking migration status',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'DataMigration',
+        operation: 'checkMigrationNeeded',
+        userId: userID,
+      }
+    );
     return false;
   }
 };

@@ -6,7 +6,7 @@
  */
 
 import { logger } from './logger';
-
+import { isErrorWithMessage } from '../types/common';
 // This is a reference mapping for developers to manually replace console statements
 export const CONSOLE_REPLACEMENT_GUIDE = {
   // Console.log replacements
@@ -20,11 +20,11 @@ export const CONSOLE_REPLACEMENT_GUIDE = {
 
   // Console.warn replacements
   'console.warn':
-    'logger.warn("message", error, { component: "ComponentName", operation: "operationName" })',
+    'logger.warn("message", isErrorWithMessage(error) ? error : undefined, { component: "ComponentName", operation: "operationName" })',
 
   // Console.error replacements
   'console.error':
-    'logger.error("message", error, { component: "ComponentName", operation: "operationName" })',
+    'logger.error("message", isErrorWithMessage(error) ? error : undefined, { component: "ComponentName", operation: "operationName" })',
 
   // Console.info replacements
   'console.info':
@@ -100,19 +100,18 @@ export const demonstrateLoggingPatterns = (): void => {
       operation: 'demonstrateLoggingPatterns',
     });
 
-    logger.success('Operation completed successfully', {
-      component: 'ConsoleReplacer',
-      operation: 'demonstrateLoggingPatterns',
-    });
-
     // Demonstrate error logging
     try {
       throw new Error('Demo error');
     } catch (error) {
-      logger.error('Demo error caught', error, {
-        component: 'ConsoleReplacer',
-        operation: 'demonstrateLoggingPatterns',
-      });
+      logger.error(
+        'Demo error caught',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'ConsoleReplacer',
+          operation: 'demonstrateLoggingPatterns',
+        }
+      );
     }
   }
 };

@@ -14,6 +14,7 @@ import { offlineStorage } from '../../utils/offlineStorage';
 import AddClientModal from '../AddClientModal';
 import { normalizePolishText } from '../../utils/textUtils';
 import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
 
 interface Client {
   id: string;
@@ -97,7 +98,7 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
             // If online fetch fails, fall back to cached data
             logger.warn(
               'Failed to fetch clients online, using cached data',
-              error,
+              isErrorWithMessage(error) ? error : undefined,
               {
                 component: 'ClientSelector',
                 operation: 'fetchClients',
@@ -109,11 +110,15 @@ const ClientSelector = forwardRef<{ focus: () => void }, ClientSelectorProps>(
           }
         }
       } catch (error) {
-        logger.error('Error fetching clients', error, {
-          component: 'ClientSelector',
-          operation: 'fetchClients',
-          userId: user.uid,
-        });
+        logger.error(
+          'Error fetching clients',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ClientSelector',
+            operation: 'fetchClients',
+            userId: user.uid,
+          }
+        );
       } finally {
         setLoading(false);
       }

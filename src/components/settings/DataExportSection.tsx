@@ -1,10 +1,33 @@
 import React, { useState } from 'react';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+} from 'firebase/firestore';
 import { db } from '../../firebase';
-import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
+import { ReceiptItem } from '../../types/receipt';
+import withErrorBoundary from '../withErrorBoundary';
+import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
 
 type ExportCollection = 'clients' | 'products' | 'categories' | 'receipts';
-type DateFilterType = 'all' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'thisYear' | 'custom';
+type DateFilterType =
+  | 'all'
+  | 'thisWeek'
+  | 'lastWeek'
+  | 'thisMonth'
+  | 'lastMonth'
+  | 'thisYear'
+  | 'custom';
+
+// Local export data type
+interface ExportRecord {
+  [key: string]: string | number | boolean | Date | null | undefined;
+}
 
 interface ExportFilters {
   collection: ExportCollection;
@@ -18,7 +41,10 @@ interface DataExportSectionProps {
   onError?: (message: string) => void;
 }
 
-const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onError }) => {
+const DataExportSection: React.FC<DataExportSectionProps> = ({
+  onSuccess,
+  onError,
+}) => {
   const { user } = useAuth();
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -27,13 +53,17 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
     collection: 'clients',
     dateFilter: 'thisMonth',
     startDate: '',
-    endDate: ''
+    endDate: '',
   });
 
-  const getDateRange = (filterType: DateFilterType, startDate?: string, endDate?: string): { start: Date; end: Date } => {
+  const getDateRange = (
+    filterType: DateFilterType,
+    startDate?: string,
+    endDate?: string
+  ): { start: Date; end: Date } => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     switch (filterType) {
       case 'thisWeek': {
         const startOfWeek = new Date(today);
@@ -71,7 +101,9 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
       }
       case 'custom': {
         if (!startDate || !endDate) {
-          throw new Error('Daty początkowa i końcowa są wymagane dla zakresu niestandardowego');
+          throw new Error(
+            'Daty początkowa i końcowa są wymagane dla zakresu niestandardowego'
+          );
         }
         const start = new Date(startDate);
         const end = new Date(endDate);
@@ -96,11 +128,16 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
     setExportSuccess(null);
 
     try {
-      let data: any[] = [];
+      let data: ExportRecord[] = [];
       let headers: string[] = [];
       let filename = '';
 
-      const { collection: collectionName, dateFilter, startDate, endDate } = exportFilters;
+      const {
+        collection: collectionName,
+        dateFilter,
+        startDate,
+        endDate,
+      } = exportFilters;
 
       switch (collectionName) {
         case 'clients': {
@@ -110,16 +147,35 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
             orderBy('name')
           );
           const snapshot = await getDocs(clientsQuery);
-          data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          headers = ['ID', 'Nazwa', 'Adres', 'Numer Dokumentu', 'Kod Pocztowy', 'Miasto', 'Pełny Adres'];
-          data = data.map(item => ({
-            'ID': item.id,
-            'Nazwa': item.name || '',
-            'Adres': item.address || '',
-            'Numer Dokumentu': item.documentNumber || '',
-            'Kod Pocztowy': item.postalCode || '',
-            'Miasto': item.city || '',
-            'Pełny Adres': item.fullAddress || ''
+          const rawData = snapshot.docs.map(doc => {
+            const docData = doc.data();
+            return {
+              id: doc.id,
+              name: docData.name || '',
+              address: docData.address || '',
+              documentNumber: docData.documentNumber || '',
+              postalCode: docData.postalCode || '',
+              city: docData.city || '',
+              fullAddress: docData.fullAddress || '',
+            };
+          });
+          headers = [
+            'ID',
+            'Nazwa',
+            'Adres',
+            'Numer Dokumentu',
+            'Kod Pocztowy',
+            'Miasto',
+            'Pełny Adres',
+          ];
+          data = rawData.map(item => ({
+            ID: item.id,
+            Nazwa: item.name,
+            Adres: item.address,
+            'Numer Dokumentu': item.documentNumber,
+            'Kod Pocztowy': item.postalCode,
+            Miasto: item.city,
+            'Pełny Adres': item.fullAddress,
           }));
           filename = 'clients';
           break;
@@ -132,16 +188,35 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
             orderBy('name')
           );
           const snapshot = await getDocs(productsQuery);
-          data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          headers = ['ID', 'Nazwa', 'Kod Produktu', 'ID Kategorii', 'Cena Zakupu', 'Cena Sprzedaży', 'Korekta Wagi'];
-          data = data.map(item => ({
-            'ID': item.id,
-            'Nazwa': item.name || '',
-            'Kod Produktu': item.itemCode || '',
-            'ID Kategorii': item.categoryId || '',
-            'Cena Zakupu': item.buy_price || 0,
-            'Cena Sprzedaży': item.sell_price || 0,
-            'Korekta Wagi': item.weightAdjustment || 1
+          const rawData = snapshot.docs.map(doc => {
+            const docData = doc.data();
+            return {
+              id: doc.id,
+              name: docData.name || '',
+              itemCode: docData.itemCode || '',
+              categoryId: docData.categoryId || '',
+              buy_price: docData.buy_price || 0,
+              sell_price: docData.sell_price || 0,
+              weightAdjustment: docData.weightAdjustment || 1,
+            };
+          });
+          headers = [
+            'ID',
+            'Nazwa',
+            'Kod Produktu',
+            'ID Kategorii',
+            'Cena Zakupu',
+            'Cena Sprzedaży',
+            'Korekta Wagi',
+          ];
+          data = rawData.map(item => ({
+            ID: item.id,
+            Nazwa: item.name,
+            'Kod Produktu': item.itemCode,
+            'ID Kategorii': item.categoryId,
+            'Cena Zakupu': item.buy_price,
+            'Cena Sprzedaży': item.sell_price,
+            'Korekta Wagi': item.weightAdjustment,
           }));
           filename = 'products';
           break;
@@ -154,11 +229,17 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
             orderBy('name')
           );
           const snapshot = await getDocs(categoriesQuery);
-          data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const rawData = snapshot.docs.map(doc => {
+            const docData = doc.data();
+            return {
+              id: doc.id,
+              name: docData.name || '',
+            };
+          });
           headers = ['ID', 'Nazwa'];
-          data = data.map(item => ({
-            'ID': item.id,
-            'Nazwa': item.name || ''
+          data = rawData.map(item => ({
+            ID: item.id,
+            Nazwa: item.name,
           }));
           filename = 'categories';
           break;
@@ -183,53 +264,81 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
             );
           }
           const snapshot = await getDocs(receiptsQuery);
-          const receipts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-          
+          const receipts = snapshot.docs.map(doc => {
+            const docData = doc.data();
+            return {
+              id: doc.id,
+              number: docData.number || '',
+              date: docData.date,
+              clientId: docData.clientId || '',
+              clientName: docData.clientName || '',
+              totalAmount: docData.totalAmount || 0,
+              items: docData.items || [],
+            };
+          });
+
           // Flatten receipt items
           data = [];
-          receipts.forEach((receipt: any) => {
+          receipts.forEach(receipt => {
             if (receipt.items && receipt.items.length > 0) {
-              receipt.items.forEach((item: any) => {
+              receipt.items.forEach((item: ReceiptItem) => {
                 data.push({
                   'ID Kwitu': receipt.id,
                   'Numer Kwitu': receipt.number || '',
-                  'Data': receipt.date ? new Date(receipt.date.seconds * 1000).toISOString() : '',
+                  Data: receipt.date
+                    ? new Date(receipt.date.seconds * 1000).toISOString()
+                    : '',
                   'ID Klienta': receipt.clientId || '',
                   'Nazwa Klienta': receipt.clientName || '',
                   'Łączna Kwota Kwitu': receipt.totalAmount || 0,
                   'Nazwa Produktu': item.itemName || '',
                   'Kod Produktu': item.itemCode || '',
-                  'Ilość': item.quantity || 0,
-                  'Jednostka': item.unit || '',
+                  Ilość: item.quantity || 0,
+                  Jednostka: item.unit || '',
                   'Cena Sprzedaży': item.sell_price || 0,
                   'Cena Zakupu': item.buy_price || 0,
-                  'Wartość Pozycji': item.total_price || 0
+                  'Wartość Pozycji': item.total_price || 0,
                 });
               });
             } else {
               data.push({
                 'ID Kwitu': receipt.id,
                 'Numer Kwitu': receipt.number || '',
-                'Data': receipt.date ? new Date(receipt.date.seconds * 1000).toISOString() : '',
+                Data: receipt.date
+                  ? new Date(receipt.date.seconds * 1000).toISOString()
+                  : '',
                 'ID Klienta': receipt.clientId || '',
                 'Nazwa Klienta': receipt.clientName || '',
                 'Łączna Kwota Kwitu': receipt.totalAmount || 0,
                 'Nazwa Produktu': '',
                 'Kod Produktu': '',
-                'Ilość': 0,
-                'Jednostka': '',
+                Ilość: 0,
+                Jednostka: '',
                 'Cena Sprzedaży': 0,
                 'Cena Zakupu': 0,
-                'Wartość Pozycji': 0
+                'Wartość Pozycji': 0,
               });
             }
           });
-          headers = ['ID Kwitu', 'Numer Kwitu', 'Data', 'ID Klienta', 'Nazwa Klienta', 'Łączna Kwota Kwitu', 'Nazwa Produktu', 'Kod Produktu', 'Ilość', 'Jednostka', 'Cena Sprzedaży', 'Cena Zakupu', 'Wartość Pozycji'];
-          filename = dateFilter === 'all' ? 'receipts-all' : `receipts-${dateFilter}`;
+          headers = [
+            'ID Kwitu',
+            'Numer Kwitu',
+            'Data',
+            'ID Klienta',
+            'Nazwa Klienta',
+            'Łączna Kwota Kwitu',
+            'Nazwa Produktu',
+            'Kod Produktu',
+            'Ilość',
+            'Jednostka',
+            'Cena Sprzedaży',
+            'Cena Zakupu',
+            'Wartość Pozycji',
+          ];
+          filename =
+            dateFilter === 'all' ? 'receipts-all' : `receipts-${dateFilter}`;
           break;
         }
-
-
       }
 
       if (data.length === 0) {
@@ -240,37 +349,46 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
       // Convert to CSV
       const csvContent = [
         headers.join(','),
-        ...data.map(row => 
-          headers.map(header => {
-            const value = row[header];
-            // Escape commas and quotes in values
-            if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(',')
-        )
+        ...data.map(row =>
+          headers
+            .map(header => {
+              const value = row[header];
+              // Escape commas and quotes in values
+              if (
+                typeof value === 'string' &&
+                (value.includes(',') ||
+                  value.includes('"') ||
+                  value.includes('\n'))
+              ) {
+                return `"${value.replace(/"/g, '""')}"`;
+              }
+              return value;
+            })
+            .join(',')
+        ),
       ].join('\n');
 
       // Add BOM for proper UTF-8 encoding in Excel
       const BOM = '\uFEFF';
-      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-      
+      const blob = new Blob([BOM + csvContent], {
+        type: 'text/csv;charset=utf-8;',
+      });
+
       // Create download link
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      
+
       // Generate filename with date
       const today = new Date().toISOString().split('T')[0];
       link.setAttribute('download', `${filename}-${today}.csv`);
-      
+
       // Trigger download
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       const successMessage = `Pomyślnie wyeksportowano ${data.length} rekordów do pliku CSV.`;
       setExportSuccess(successMessage);
       onSuccess?.(successMessage);
@@ -309,7 +427,12 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
           </label>
           <select
             value={exportFilters.collection}
-            onChange={(e) => setExportFilters(prev => ({ ...prev, collection: e.target.value as ExportCollection }))}
+            onChange={e =>
+              setExportFilters(prev => ({
+                ...prev,
+                collection: e.target.value as ExportCollection,
+              }))
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
           >
             <option value="clients">Klienci</option>
@@ -327,7 +450,12 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
               </label>
               <select
                 value={exportFilters.dateFilter}
-                onChange={(e) => setExportFilters(prev => ({ ...prev, dateFilter: e.target.value as DateFilterType }))}
+                onChange={e =>
+                  setExportFilters(prev => ({
+                    ...prev,
+                    dateFilter: e.target.value as DateFilterType,
+                  }))
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="all">Wszystkie</option>
@@ -349,7 +477,12 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
                   <input
                     type="date"
                     value={exportFilters.startDate}
-                    onChange={(e) => setExportFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                    onChange={e =>
+                      setExportFilters(prev => ({
+                        ...prev,
+                        startDate: e.target.value,
+                      }))
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
@@ -360,7 +493,12 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
                   <input
                     type="date"
                     value={exportFilters.endDate}
-                    onChange={(e) => setExportFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                    onChange={e =>
+                      setExportFilters(prev => ({
+                        ...prev,
+                        endDate: e.target.value,
+                      }))
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
@@ -382,8 +520,18 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
               </>
             ) : (
               <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                  />
                 </svg>
                 Eksportuj do CSV
               </>
@@ -395,4 +543,19 @@ const DataExportSection: React.FC<DataExportSectionProps> = ({ onSuccess, onErro
   );
 };
 
-export default DataExportSection; 
+export default withErrorBoundary(DataExportSection, {
+  context: 'Data Export',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'Data export error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'DataExportSection',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

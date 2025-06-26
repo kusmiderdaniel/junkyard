@@ -16,50 +16,8 @@ import { usePDFReceipt } from '../components/PDFReceipt';
 // ExcelJS will be lazy loaded
 import { createSanitizedInputHandler } from '../utils/inputSanitizer';
 import { logger } from '../utils/logger';
-
-interface ReceiptItem {
-  productId: string;
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  weightAdjustment: number;
-  total_price: number;
-}
-
-interface Receipt {
-  id: string;
-  number: string;
-  date: Date;
-  clientId: string;
-  clientName?: string;
-  userID: string;
-  totalAmount: number;
-  items: ReceiptItem[];
-}
-
-interface Client {
-  id: string;
-  name: string;
-  address: string;
-  documentNumber: string;
-  postalCode?: string;
-  city?: string;
-  fullAddress?: string;
-}
-
-interface CompanyDetails {
-  companyName: string;
-  numberNIP: string;
-  numberREGON: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  email: string;
-  phoneNumber: string;
-}
+import { isErrorWithMessage } from '../types/common';
+import { Receipt, Client, CompanyDetails } from '../types/receipt';
 
 interface ClientKPIs {
   totalQuantity: number;
@@ -124,12 +82,16 @@ const ClientDetail: React.FC = () => {
         return;
       }
     } catch (error) {
-      logger.error('Błąd ładowania danych klienta', error, {
-        component: 'ClientDetail',
-        operation: 'fetchClient',
-        userId: user?.uid,
-        extra: { clientId },
-      });
+      logger.error(
+        'Błąd ładowania danych klienta',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'ClientDetail',
+          operation: 'fetchClient',
+          userId: user?.uid,
+          extra: { clientId },
+        }
+      );
       toast.error('Błąd ładowania danych klienta.');
       navigate('/clients');
     } finally {
@@ -160,11 +122,15 @@ const ClientDetail: React.FC = () => {
         });
       }
     } catch (error) {
-      logger.warn('Failed to fetch company details, using defaults', error, {
-        component: 'ClientDetail',
-        operation: 'fetchCompanyDetails',
-        userId: user.uid,
-      });
+      logger.warn(
+        'Failed to fetch company details, using defaults',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'ClientDetail',
+          operation: 'fetchCompanyDetails',
+          userId: user.uid,
+        }
+      );
       // Fallback to default company details if fetch fails
     }
   }, [user]);
@@ -200,7 +166,7 @@ const ClientDetail: React.FC = () => {
         date: doc.data().date.toDate(),
       })) as Receipt[];
 
-      logger.success('Found receipts for this client', {
+      logger.info('Found receipts for this client', {
         component: 'ClientDetail',
         operation: 'fetchClientReceipts',
         userId: user.uid,
@@ -224,39 +190,51 @@ const ClientDetail: React.FC = () => {
 
       setKPIs({ totalQuantity, totalAmount, receiptCount });
     } catch (error) {
-      logger.error('Error fetching receipts for client', error, {
-        component: 'ClientDetail',
-        operation: 'fetchClientReceipts',
-        userId: user.uid,
-        extra: {
-          clientId,
-          errorMessage:
-            error instanceof Error ? error.message : 'Unknown error',
-          errorCode:
-            error && typeof error === 'object' && 'code' in error
-              ? (error as any).code
-              : 'no-code',
-        },
-      });
-
-      // Check if it's a missing index error
-      if (error instanceof Error && error.message.includes('index')) {
-        logger.warn('Missing Firestore index detected', error, {
+      logger.error(
+        'Error fetching receipts for client',
+        isErrorWithMessage(error) ? error : undefined,
+        {
           component: 'ClientDetail',
           operation: 'fetchClientReceipts',
           userId: user.uid,
-          extra: { clientId, indexError: true },
-        });
+          extra: {
+            clientId,
+            errorMessage:
+              error instanceof Error ? error.message : 'Unknown error',
+            errorCode:
+              error && typeof error === 'object' && 'code' in error
+                ? (error as any).code
+                : 'no-code',
+          },
+        }
+      );
+
+      // Check if it's a missing index error
+      if (error instanceof Error && error.message.includes('index')) {
+        logger.warn(
+          'Missing Firestore index detected',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ClientDetail',
+            operation: 'fetchClientReceipts',
+            userId: user.uid,
+            extra: { clientId, indexError: true },
+          }
+        );
         toast.error(
           'Indeks bazy danych jest w trakcie budowania. Spróbuj ponownie za kilka minut.'
         );
       } else {
-        logger.error('Unexpected error during receipt fetch', error, {
-          component: 'ClientDetail',
-          operation: 'fetchClientReceipts',
-          userId: user.uid,
-          extra: { clientId },
-        });
+        logger.error(
+          'Unexpected error during receipt fetch',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ClientDetail',
+            operation: 'fetchClientReceipts',
+            userId: user.uid,
+            extra: { clientId },
+          }
+        );
       }
 
       // Receipts list will remain empty if fetch fails

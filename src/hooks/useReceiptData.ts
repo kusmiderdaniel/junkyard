@@ -25,7 +25,7 @@ import {
   PageSnapshots,
 } from '../types/receipt';
 import { logger } from '../utils/logger';
-
+import { isErrorWithMessage } from '../types/common';
 interface UseReceiptDataProps {
   user: any;
   currentPage: number;
@@ -95,7 +95,7 @@ export const useReceiptData = ({
         } catch (onlineError) {
           logger.warn(
             'Online company details fetch failed, trying cached data',
-            onlineError,
+            isErrorWithMessage(onlineError) ? onlineError : undefined,
             {
               component: 'useReceiptData',
               operation: 'fetchCompanyDetails',
@@ -124,11 +124,15 @@ export const useReceiptData = ({
 
       setCompanyDetails(details);
     } catch (error) {
-      logger.error('Error fetching company details', error, {
-        component: 'useReceiptData',
-        operation: 'fetchCompanyDetails',
-        userId: user?.uid,
-      });
+      logger.error(
+        'Error fetching company details',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'useReceiptData',
+          operation: 'fetchCompanyDetails',
+          userId: user?.uid,
+        }
+      );
     }
   }, [user, isOffline]);
 
@@ -160,7 +164,7 @@ export const useReceiptData = ({
         } catch (onlineError) {
           logger.warn(
             'Online clients fetch failed, trying cached data',
-            onlineError,
+            isErrorWithMessage(onlineError) ? onlineError : undefined,
             {
               component: 'useReceiptData',
               operation: 'fetchClients',
@@ -174,11 +178,15 @@ export const useReceiptData = ({
         }
       }
     } catch (error) {
-      logger.error('Error fetching clients', error, {
-        component: 'useReceiptData',
-        operation: 'fetchClients',
-        userId: user?.uid,
-      });
+      logger.error(
+        'Error fetching clients',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'useReceiptData',
+          operation: 'fetchClients',
+          userId: user?.uid,
+        }
+      );
     }
   }, [user, isOffline]);
 
@@ -230,7 +238,7 @@ export const useReceiptData = ({
       if (!isOffline) {
         logger.warn(
           'Online available months fetch failed, trying cached data',
-          error,
+          isErrorWithMessage(error) ? error : undefined,
           {
             component: 'useReceiptData',
             operation: 'fetchAvailableMonths',
@@ -503,7 +511,7 @@ export const useReceiptData = ({
         } catch (searchError) {
           logger.warn(
             'Search failed, falling back to basic query',
-            searchError,
+            isErrorWithMessage(searchError) ? searchError : undefined,
             {
               component: 'useReceiptData',
               operation: 'fetchReceipts',
@@ -635,11 +643,15 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
-        logger.warn('Online receipt fetch failed, trying cached data', error, {
-          component: 'useReceiptData',
-          operation: 'fetchReceipts',
-          userId: user.uid,
-        });
+        logger.warn(
+          'Online receipt fetch failed, trying cached data',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'useReceiptData',
+            operation: 'fetchReceipts',
+            userId: user.uid,
+          }
+        );
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           setReceipts(cachedReceipts.slice(0, itemsPerPage));

@@ -7,7 +7,7 @@
 import { offlineStorage } from './offlineStorage';
 import { IdMappingUpdate } from './idMappingService';
 import { logger } from './logger';
-
+import { isErrorWithMessage } from '../types/common';
 export interface CacheUpdateResult {
   success: boolean;
   updatedClients: number;
@@ -54,28 +54,36 @@ class CacheUpdateService {
         attempts++;
 
         if (attempts >= this.config.maxRetries) {
-          logger.error('Cache update failed after max retries', error, {
-            component: 'CacheUpdateService',
-            operation: 'updateCache',
-            extra: {
-              context,
-              maxRetries: this.config.maxRetries,
-              finalAttempt: attempts,
-            },
-          });
+          logger.error(
+            'Cache update failed after max retries',
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'CacheUpdateService',
+              operation: 'updateCache',
+              extra: {
+                context,
+                maxRetries: this.config.maxRetries,
+                finalAttempt: attempts,
+              },
+            }
+          );
           throw error;
         }
 
         // Wait before retry
-        logger.warn('Cache update failed, retrying...', error, {
-          component: 'CacheUpdateService',
-          operation: 'updateCache',
-          extra: {
-            context,
-            attempt: attempts,
-            nextRetryIn: this.config.retryDelay,
-          },
-        });
+        logger.warn(
+          'Cache update failed, retrying...',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'CacheUpdateService',
+            operation: 'updateCache',
+            extra: {
+              context,
+              attempt: attempts,
+              nextRetryIn: this.config.retryDelay,
+            },
+          }
+        );
 
         await this.delay(this.config.retryDelay * attempts);
       }
@@ -124,11 +132,15 @@ class CacheUpdateService {
           batch.map(operation => this.updateCache(operation, 'batch_operation'))
         );
       } catch (error) {
-        logger.error('Batch cache update failed', error, {
-          component: 'CacheUpdateService',
-          operation: 'processQueue',
-          extra: { batchSize: batch.length },
-        });
+        logger.error(
+          'Batch cache update failed',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'CacheUpdateService',
+            operation: 'processQueue',
+            extra: { batchSize: batch.length },
+          }
+        );
       }
     }
 
@@ -151,10 +163,14 @@ class CacheUpdateService {
         operation: 'refreshCache',
       });
     } catch (error) {
-      logger.error('Cache refresh failed', error, {
-        component: 'CacheUpdateService',
-        operation: 'refreshCache',
-      });
+      logger.error(
+        'Cache refresh failed',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'CacheUpdateService',
+          operation: 'refreshCache',
+        }
+      );
       throw error;
     }
   }
@@ -269,11 +285,15 @@ class CacheUpdateService {
 
       return false;
     } catch (error) {
-      logger.error('Failed to replace entity in cache', error, {
-        component: 'CacheUpdateService',
-        operation: 'replaceEntity',
-        extra: { tempId, realId, type },
-      });
+      logger.error(
+        'Failed to replace entity in cache',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'CacheUpdateService',
+          operation: 'replaceEntity',
+          extra: { tempId, realId, type },
+        }
+      );
       return false;
     }
   }
@@ -472,11 +492,15 @@ class CacheUpdateService {
 
       return false;
     } catch (error) {
-      logger.error('Failed to remove entity from cache', error, {
-        component: 'CacheUpdateService',
-        operation: 'removeEntity',
-        extra: { entityId, type },
-      });
+      logger.error(
+        'Failed to remove entity from cache',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'CacheUpdateService',
+          operation: 'removeEntity',
+          extra: { entityId, type },
+        }
+      );
       return false;
     }
   }

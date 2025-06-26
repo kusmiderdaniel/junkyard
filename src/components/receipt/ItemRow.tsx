@@ -1,26 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-interface Product {
-  id: string;
-  name: string;
-  itemCode: string;
-  categoryId: string;
-  buy_price: number;
-  sell_price: number;
-  weightAdjustment: number;
-}
-
-interface ReceiptItem {
-  productId: string;
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  weightAdjustment: number;
-  total_price: number;
-}
+import { ReceiptItem, Product } from '../../types/receipt';
 
 interface ItemRowProps {
   item: ReceiptItem;

@@ -26,7 +26,7 @@ import {
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 import { logger } from '../utils/logger';
-
+import { isErrorWithMessage } from '../types/common';
 const INITIAL_ITEMS_COUNT = 5;
 const MAX_ITEMS_COUNT = 15;
 
@@ -193,11 +193,15 @@ export const useReceiptForm = () => {
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Error fetching receipt form data', error, {
-          component: 'useReceiptForm',
-          operation: 'fetchData',
-          userId: user?.uid,
-        });
+        logger.error(
+          'Error fetching receipt form data',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'useReceiptForm',
+            operation: 'fetchData',
+            userId: user?.uid,
+          }
+        );
       }
     } finally {
       setLoading(false);

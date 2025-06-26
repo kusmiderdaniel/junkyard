@@ -19,6 +19,7 @@ import {
   Category,
 } from '../types/receipt';
 import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
 
 const OfflineDataHandler: React.FC = () => {
   const { user } = useAuth();
@@ -105,11 +106,15 @@ const OfflineDataHandler: React.FC = () => {
         },
       });
     } catch (error) {
-      logger.warn('Failed to cache user data', error, {
-        component: 'OfflineDataHandler',
-        operation: 'cacheUserData',
-        userId: user.uid,
-      });
+      logger.warn(
+        'Failed to cache user data',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'OfflineDataHandler',
+          operation: 'cacheUserData',
+          userId: user.uid,
+        }
+      );
     }
   }, [user, isOnline]);
 

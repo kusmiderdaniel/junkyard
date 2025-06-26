@@ -4,7 +4,7 @@ import { useOfflineStatus } from './useOfflineStatus';
 import { syncService, SyncResult } from '../utils/syncService';
 import { offlineStorage } from '../utils/offlineStorage';
 import { logger } from '../utils/logger';
-
+import { isErrorWithMessage } from '../types/common';
 export const useOfflineSync = () => {
   const { user } = useAuth();
   const { isOnline, isOffline } = useOfflineStatus();
@@ -53,10 +53,14 @@ export const useOfflineSync = () => {
 
       return result;
     } catch (error) {
-      logger.error('Manual sync failed', error, {
-        component: 'useOfflineSync',
-        operation: 'triggerSync',
-      });
+      logger.error(
+        'Manual sync failed',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'useOfflineSync',
+          operation: 'triggerSync',
+        }
+      );
       setSyncProtectionActive(false);
       const errorResult: SyncResult = {
         success: false,
@@ -109,10 +113,14 @@ export const useOfflineSync = () => {
               window.dispatchEvent(new CustomEvent('sync-completed'));
             }, 500);
           } catch (error) {
-            logger.error('Auto-sync failed', error, {
-              component: 'useOfflineSync',
-              operation: 'checkAndSync',
-            });
+            logger.error(
+              'Auto-sync failed',
+              isErrorWithMessage(error) ? error : undefined,
+              {
+                component: 'useOfflineSync',
+                operation: 'checkAndSync',
+              }
+            );
           }
         }, 3000); // Increased to 3 seconds for better stability
       }

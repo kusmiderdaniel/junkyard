@@ -7,6 +7,7 @@ import {
 // Encryption utility will be lazy loaded
 import LoadingSpinner from './LoadingSpinner';
 import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
 
 interface MigrationHandlerProps {
   children: React.ReactNode;
@@ -44,11 +45,15 @@ const MigrationHandler: React.FC<MigrationHandlerProps> = ({ children }) => {
         // Show dialog to user
         setShowMigrationDialog(true);
       } catch (error) {
-        logger.error('Error checking migration status', error, {
-          component: 'MigrationHandler',
-          operation: 'checkMigrationStatus',
-          userId: user?.uid,
-        });
+        logger.error(
+          'Error checking migration status',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'MigrationHandler',
+            operation: 'checkMigrationStatus',
+            userId: user?.uid,
+          }
+        );
         setMigrationStatus('error');
       }
     };
@@ -76,11 +81,15 @@ const MigrationHandler: React.FC<MigrationHandlerProps> = ({ children }) => {
         });
       }
     } catch (error) {
-      logger.error('Migration failed', error, {
-        component: 'MigrationHandler',
-        operation: 'runMigration',
-        userId: user.uid,
-      });
+      logger.error(
+        'Migration failed',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'MigrationHandler',
+          operation: 'runMigration',
+          userId: user.uid,
+        }
+      );
       setMigrationStatus('error');
     }
   };
@@ -105,11 +114,15 @@ const MigrationHandler: React.FC<MigrationHandlerProps> = ({ children }) => {
           await migrateClientSearchFields(user.uid);
           localStorage.setItem(migrationKey, 'true');
         } catch (error) {
-          logger.error('Client migration failed', error, {
-            component: 'MigrationHandler',
-            operation: 'migrateClients',
-            userId: user.uid,
-          });
+          logger.error(
+            'Client migration failed',
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'MigrationHandler',
+              operation: 'migrateClients',
+              userId: user.uid,
+            }
+          );
         }
       }
 
@@ -123,11 +136,15 @@ const MigrationHandler: React.FC<MigrationHandlerProps> = ({ children }) => {
           await migrateUnencryptedData(user.uid);
           localStorage.setItem(encryptionKey, 'true');
         } catch (error) {
-          logger.error('Encryption migration failed', error, {
-            component: 'MigrationHandler',
-            operation: 'migrateEncryption',
-            userId: user.uid,
-          });
+          logger.error(
+            'Encryption migration failed',
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'MigrationHandler',
+              operation: 'migrateEncryption',
+              userId: user.uid,
+            }
+          );
         }
       }
 
