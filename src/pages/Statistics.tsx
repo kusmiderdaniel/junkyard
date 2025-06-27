@@ -44,6 +44,17 @@ const Statistics: React.FC = () => {
     getDateRange,
   } = useStatisticsData(dateFilter, startDate, endDate, selectedItemCode);
 
+  // Client statistics state
+  const [clientStatistics, setClientStatistics] = useState<ClientStatistics[]>(
+    []
+  );
+  const [clients, setClients] = useState<{ [key: string]: string }>({});
+
+  // Monthly statistics state
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [monthlyViewType, setMonthlyViewType] =
+    useState<MonthlyViewType>('amount');
+
   // Sorting state
   const [sortField, setSortField] =
     useState<keyof StatisticsSummary>('totalAmount');
@@ -54,6 +65,13 @@ const Statistics: React.FC = () => {
     useState<keyof ClientStatistics>('totalAmount');
   const [clientSortDirection, setClientSortDirection] =
     useState<SortDirection>('desc');
+
+  // Client sorting state
+  const [clientSortField, setClientSortField] =
+    useState<keyof ClientStatistics>('totalAmount');
+  const [clientSortDirection, setClientSortDirection] = useState<
+    'asc' | 'desc'
+  >('desc');
 
   // Toggle state for future features
   const [showFutureFeatures, setShowFutureFeatures] = useState(false);
@@ -87,6 +105,23 @@ const Statistics: React.FC = () => {
       setTrendsTabVisited(true);
     }
   }, [activeTab, trendsTabVisited, dateFilter]);
+
+  // Process client statistics when receipts or clients change
+  useEffect(() => {
+    processClientStatistics();
+  }, [processClientStatistics]);
+
+  // Process monthly statistics when receipts change
+  useEffect(() => {
+    processMonthlyStatistics();
+  }, [processMonthlyStatistics]);
+
+  // Auto-select "this year" when monthly trends tab is active
+  useEffect(() => {
+    if (activeTab === 'trends' && dateFilter !== 'thisYear') {
+      setDateFilter('thisYear');
+    }
+  }, [activeTab, dateFilter]);
 
   // Handle date filter change
   const handleDateFilterChange = (filterType: DateFilterType) => {
@@ -172,6 +207,16 @@ const Statistics: React.FC = () => {
       return 0;
     });
   }, [clientStatistics, clientSortField, clientSortDirection]);
+
+  // Calculate client totals
+  const totalClientQuantity = clientStatistics.reduce(
+    (sum, client) => sum + client.totalQuantity,
+    0
+  );
+  const totalClientAmount = clientStatistics.reduce(
+    (sum, client) => sum + client.totalAmount,
+    0
+  );
 
   // Excel export function using lazy loading
   const handleExportToExcel = async () => {
