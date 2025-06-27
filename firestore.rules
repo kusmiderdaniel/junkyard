@@ -56,5 +56,11 @@ service cloud.firestore {
     match /companyDetails/{userId} {
       allow read, write, create, update, delete: if isOwner(userId);
     }
+    
+    // Price history collection - users can only access their own price history
+    match /priceHistory/{priceHistoryId} {
+      allow read, update, delete: if isDocumentOwner();
+      allow create: if isCreatingOwnDocument();
+    }
   }
 }

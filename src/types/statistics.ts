@@ -57,9 +57,64 @@ export type DateFilterType =
   | 'thisYear'
   | 'custom';
 
-export type ReportTab = 'products' | 'clients' | 'trends' | 'monthly';
+export type ReportTab =
+  | 'products'
+  | 'clients'
+  | 'trends'
+  | 'monthly'
+  | 'priceHistory';
 
 export type SortField = keyof StatisticsSummary | keyof ClientStatistics;
 export type SortDirection = 'asc' | 'desc';
 
 export type MonthlyViewType = 'quantity' | 'amount';
+
+// Price History Types
+export interface PriceHistoryEntry {
+  id: string;
+  userID: string;
+  productId: string;
+  itemCode: string;
+  itemName: string;
+  buy_price: number;
+  sell_price: number;
+  timestamp: Date;
+  dateKey: string; // Format: "2024-01-15" for efficient date queries
+  createdAt: Date;
+}
+
+export interface PriceHistoryFilters {
+  selectedProductId: string;
+  selectedItemCode: string;
+  startDate: string;
+  endDate: string;
+  priceType: 'buy_price' | 'sell_price';
+}
+
+export interface ChartDataPoint {
+  date: string;
+  buy_price?: number;
+  sell_price?: number;
+  timestamp: number;
+  formattedDate: string;
+}
+
+export interface ProductOption {
+  productId: string;
+  itemCode: string;
+  itemName: string;
+  currentBuyPrice: number;
+  currentSellPrice: number;
+}
+
+export interface PriceChangeEvent {
+  date: string;
+  oldBuyPrice: number;
+  newBuyPrice: number;
+  oldSellPrice: number;
+  newSellPrice: number;
+  changePercentage: {
+    buy: number;
+    sell: number;
+  };
+}

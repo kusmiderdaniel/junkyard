@@ -19,6 +19,7 @@ import { TabNavigation } from '../components/statistics/TabNavigation';
 import { ProductsTab } from '../components/statistics/ProductsTab';
 import { ClientsTab } from '../components/statistics/ClientsTab';
 import { MonthlyTrendsTab } from '../components/statistics/MonthlyTrendsTab';
+import { PriceHistoryTab } from '../components/statistics/PriceHistoryTab';
 
 const Statistics: React.FC = () => {
   const { user } = useAuth();
@@ -54,9 +55,6 @@ const Statistics: React.FC = () => {
     loading,
     getDateRange,
   } = useStatisticsData(dateFilter, startDate, endDate, selectedItemCode);
-
-  // Toggle state for future features
-  const [showFutureFeatures, setShowFutureFeatures] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<ReportTab>('products');
@@ -253,82 +251,18 @@ const Statistics: React.FC = () => {
       </div>
 
       {/* Filters Section */}
-      <div className="flex gap-6">
-        <div className="w-1/2">
-          <StatisticsFilters
-            dateFilter={dateFilter}
-            startDate={startDate}
-            endDate={endDate}
-            selectedItemCode={selectedItemCode}
-            availableItemCodes={availableItemCodes}
-            onDateFilterChange={handleDateFilterChange}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            onItemCodeChange={setSelectedItemCode}
-            getDateRange={getDateRange}
-          />
-        </div>
-
-        {/* Future Statistics Ideas */}
-        <div className="w-1/2">
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow-md border border-blue-200 overflow-hidden">
-            <button
-              onClick={() => setShowFutureFeatures(!showFutureFeatures)}
-              className="w-full p-6 text-left hover:bg-blue-100 hover:bg-opacity-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
-            >
-              <h2 className="text-xl font-semibold text-gray-800 flex items-center justify-between">
-                <div className="flex items-center">
-                  <svg
-                    className="w-5 h-5 text-blue-600 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                    />
-                  </svg>
-                  Przyszłe Funkcje
-                </div>
-                <svg
-                  className={`w-5 h-5 text-blue-600 transform transition-transform duration-200 ${showFutureFeatures ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </h2>
-            </button>
-
-            {showFutureFeatures && (
-              <div className="px-6 pb-6">
-                <div className="space-y-3">
-                  <div className="flex items-center text-gray-700">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                    <span className="text-sm">
-                      Historia cen produktów w czasie
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-4 p-3 bg-white bg-opacity-60 rounded-md">
-                  <p className="text-xs text-gray-600 italic">
-                    Te funkcje będą dostępne w przyszłych aktualizacjach systemu
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <StatisticsFilters
+        dateFilter={dateFilter}
+        startDate={startDate}
+        endDate={endDate}
+        selectedItemCode={selectedItemCode}
+        availableItemCodes={availableItemCodes}
+        onDateFilterChange={handleDateFilterChange}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onItemCodeChange={setSelectedItemCode}
+        getDateRange={getDateRange}
+      />
 
       {/* Tab Navigation and Content */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -368,6 +302,14 @@ const Statistics: React.FC = () => {
               onViewTypeChange={setMonthlyViewType}
               formatCurrency={formatCurrency}
               formatQuantity={formatQuantity}
+            />
+          )}
+          {activeTab === 'priceHistory' && (
+            <PriceHistoryTab
+              formatCurrency={formatCurrency}
+              startDate={startDate}
+              endDate={endDate}
+              selectedItemCode={selectedItemCode}
             />
           )}
           {activeTab === 'monthly' &&
