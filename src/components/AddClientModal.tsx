@@ -191,27 +191,8 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       } else {
         // Add mode - create new client
         if (isOffline) {
-          // Add to offline queue
-          const tempId = await addOfflineClient({
-            ...clientData,
-            name_lowercase: clientData.name.toLowerCase(),
-            name_normalized: normalizePolishText(clientData.name),
-            address_normalized: normalizePolishText(clientData.address),
-            documentNumber_normalized: normalizePolishText(
-              clientData.documentNumber
-            ),
-            postalCode_normalized: normalizePolishText(clientData.postalCode),
-            city_normalized: normalizePolishText(clientData.city),
-            fullAddress_normalized: normalizePolishText(fullAddress),
-            searchableText: createSearchableText([
-              clientData.name,
-              clientData.address,
-              clientData.documentNumber,
-              clientData.postalCode,
-              clientData.city,
-              fullAddress,
-            ]),
-          });
+          // Add to offline queue - only basic client data
+          const tempId = await addOfflineClient(clientData);
 
           if (tempId) {
             toast.success(

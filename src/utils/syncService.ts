@@ -260,7 +260,9 @@ class SyncService {
         await this.syncUpdateClient(operation.data, userUID);
         break;
       case 'DELETE_CLIENT':
-        await this.syncDeleteClient(operation.data.clientId, userUID);
+        // For DELETE_CLIENT operations, the data should contain clientId
+        const deleteData = operation.data as any; // Type assertion for delete operation
+        await this.syncDeleteClient(deleteData.clientId, userUID);
         break;
       default:
         throw new Error(`Unknown operation type: ${operation.type}`);
@@ -380,7 +382,7 @@ class SyncService {
 
   private async syncDeleteClient(
     clientId: string,
-    userUID: string
+    _userUID: string // Renamed to indicate intentionally unused
   ): Promise<void> {
     await deleteDoc(doc(db, 'clients', clientId));
 

@@ -39,10 +39,25 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [initialProduct, setInitialProduct] = useState(newProduct);
 
+  // Price edit values (similar to ProductsTable approach)
+  const [priceEdits, setPriceEdits] = useState<{ [key: string]: string }>({});
+
   // Update initial values when modal opens or newProduct changes
   useEffect(() => {
     setInitialProduct(newProduct);
+    // Clear price edits when newProduct changes
+    setPriceEdits({});
   }, [newProduct]);
+
+  // Helper function to get price display value (similar to ProductsTable)
+  const getPriceEditValue = (
+    field: 'buy_price' | 'sell_price',
+    originalValue: number
+  ) => {
+    return priceEdits[field] !== undefined
+      ? priceEdits[field]
+      : originalValue.toFixed(2);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,6 +119,55 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
   const handleCancelDelete = () => {
     setShowDeleteDialog(false);
+  };
+
+  // Price change handlers (simplified like ProductsTable)
+  const handleBuyPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPriceEdits(prev => ({ ...prev, buy_price: value }));
+  };
+
+  const handleSellPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPriceEdits(prev => ({ ...prev, sell_price: value }));
+  };
+
+  // Price blur handlers - update actual product values and format display
+  const handleBuyPriceBlur = () => {
+    const value = priceEdits.buy_price;
+    if (value !== undefined) {
+      const numericValue = parseFloat(value) || 0;
+      setNewProduct({
+        ...newProduct,
+        buy_price: numericValue,
+      });
+      // Update display to show formatted value
+      setPriceEdits(prev => ({
+        ...prev,
+        buy_price: numericValue.toFixed(2),
+      }));
+    }
+  };
+
+  const handleSellPriceBlur = () => {
+    const value = priceEdits.sell_price;
+    if (value !== undefined) {
+      const numericValue = parseFloat(value) || 0;
+      setNewProduct({
+        ...newProduct,
+        sell_price: numericValue,
+      });
+      // Update display to show formatted value
+      setPriceEdits(prev => ({
+        ...prev,
+        sell_price: numericValue.toFixed(2),
+      }));
+    }
+  };
+
+  // Select all text on focus for better UX
+  const handlePriceFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
   };
 
   return (
@@ -271,25 +335,19 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700">
                   Cena Skupu <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={newProduct.buy_price || ''}
-                    onChange={e =>
-                      setNewProduct({
-                        ...newProduct,
-                        buy_price: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-right [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    placeholder="0,00"
+                    value={getPriceEditValue('buy_price', newProduct.buy_price)}
+                    onChange={handleBuyPriceChange}
+                    onBlur={handleBuyPriceBlur}
+                    onFocus={handlePriceFocus}
+                    className="flex-1 px-3 py-2 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 text-sm">zł</span>
-                  </div>
+                  <span className="text-gray-500 text-sm">zł</span>
                 </div>
               </div>
 
@@ -298,25 +356,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700">
                   Cena Sprzedaży <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={newProduct.sell_price || ''}
-                    onChange={e =>
-                      setNewProduct({
-                        ...newProduct,
-                        sell_price: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-right [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    placeholder="0,00"
+                    value={getPriceEditValue(
+                      'sell_price',
+                      newProduct.sell_price
+                    )}
+                    onChange={handleSellPriceChange}
+                    onBlur={handleSellPriceBlur}
+                    onFocus={handlePriceFocus}
+                    className="flex-1 px-3 py-2 text-right border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 text-sm">zł</span>
-                  </div>
+                  <span className="text-gray-500 text-sm">zł</span>
                 </div>
               </div>
             </div>

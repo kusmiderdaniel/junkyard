@@ -243,11 +243,13 @@ const OfflineData: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {operation.type === 'CREATE_CLIENT' &&
-                      operation.data?.name
-                        ? `Klient: ${operation.data.name}`
+                      operation.data &&
+                      'name' in operation.data
+                        ? `Klient: ${(operation.data as any).name}`
                         : operation.type === 'CREATE_RECEIPT' &&
-                            operation.data?.number
-                          ? `Kwit: ${operation.data.number}`
+                            operation.data &&
+                            'number' in operation.data
+                          ? `Kwit: ${(operation.data as any).number}`
                           : 'Szczegóły niedostępne'}
                     </td>
                   </tr>

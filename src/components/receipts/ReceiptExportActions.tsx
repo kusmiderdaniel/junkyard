@@ -1,4 +1,4 @@
-import React from 'react';
+// React import removed - using new JSX transform
 import { db } from '../../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { pdf } from '@react-pdf/renderer';
@@ -27,7 +27,7 @@ export const useReceiptExportActions = ({
   user,
   selectedMonth,
   searchTerm,
-  clients,
+  clients: _clients, // Renamed to indicate intentionally unused
   companyDetails,
   getClientName,
   formatMonthLabel,

@@ -32,11 +32,13 @@ import rateLimiter, { type RateLimitResult } from './rateLimiter';
  */
 export class RateLimitedAuth {
   private auth: Auth;
-  private getUserIdentifier: () => string;
 
-  constructor(auth: Auth, getUserIdentifier: () => string = () => 'anonymous') {
+  constructor(
+    auth: Auth,
+    _getUserIdentifier: () => string = () => 'anonymous'
+  ) {
     this.auth = auth;
-    this.getUserIdentifier = getUserIdentifier;
+    // getUserIdentifier parameter reserved for future rate limiting features
   }
 
   async signInWithEmailAndPassword(

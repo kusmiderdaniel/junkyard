@@ -210,9 +210,8 @@ const ItemRow: React.FC<ItemRowProps> = ({
       <td className="px-4 py-4">
         <div className="flex items-center space-x-2">
           <input
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
+            inputMode="decimal"
             value={
               quantityEdit !== ''
                 ? quantityEdit
@@ -221,7 +220,15 @@ const ItemRow: React.FC<ItemRowProps> = ({
                   : ''
             }
             onChange={e => {
-              setQuantityEdit(e.target.value);
+              // Allow only digits and decimal point
+              const value = e.target.value.replace(/[^\d.]/g, '');
+              // Ensure only one decimal point
+              const parts = value.split('.');
+              const formattedValue =
+                parts.length > 2
+                  ? parts[0] + '.' + parts.slice(1).join('')
+                  : value;
+              setQuantityEdit(formattedValue);
             }}
             onBlur={e => {
               const parsedValue = parseFloat(e.target.value) || 0;
@@ -248,9 +255,8 @@ const ItemRow: React.FC<ItemRowProps> = ({
       <td className="px-4 py-4">
         <div className="flex items-center space-x-2">
           <input
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
+            inputMode="decimal"
             value={
               buyPriceEdit !== ''
                 ? buyPriceEdit
@@ -259,7 +265,15 @@ const ItemRow: React.FC<ItemRowProps> = ({
                   : ''
             }
             onChange={e => {
-              setBuyPriceEdit(e.target.value);
+              // Allow only digits and decimal point
+              const value = e.target.value.replace(/[^\d.]/g, '');
+              // Ensure only one decimal point
+              const parts = value.split('.');
+              const formattedValue =
+                parts.length > 2
+                  ? parts[0] + '.' + parts.slice(1).join('')
+                  : value;
+              setBuyPriceEdit(formattedValue);
             }}
             onBlur={e => {
               const parsedValue = parseFloat(e.target.value) || 0;

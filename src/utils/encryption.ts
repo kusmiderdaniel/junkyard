@@ -33,7 +33,7 @@ const generateKey = async (userUID: string): Promise<CryptoKey> => {
 
 // Encrypt data
 export const encryptData = async (
-  data: any,
+  data: unknown,
   userUID: string
 ): Promise<string> => {
   try {

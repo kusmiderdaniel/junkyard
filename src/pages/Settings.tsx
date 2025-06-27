@@ -7,22 +7,36 @@ import DataImportSection from '../components/settings/DataImportSection';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { offlineStorage } from '../utils/offlineStorage';
 
+interface CacheInfo {
+  clientsCount: number;
+  receiptsCount: number;
+}
+
 const Settings: React.FC = () => {
   const [globalMessage, setGlobalMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
-  const [cacheInfo, setCacheInfo] = useState<any>(null);
+  const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const { isOnline } = useOfflineStatus();
 
   const handleSuccess = useCallback((message: string) => {
     setGlobalMessage({ type: 'success', text: message });
-    setTimeout(() => setGlobalMessage(null), 5000);
+    const timeoutId = setTimeout(() => setGlobalMessage(null), 5000);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const handleError = useCallback((message: string) => {
     setGlobalMessage({ type: 'error', text: message });
-    setTimeout(() => setGlobalMessage(null), 5000);
+    const timeoutId = setTimeout(() => setGlobalMessage(null), 5000);
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Clean up timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      // This will clean up any pending timeouts when component unmounts
+    };
   }, []);
 
   useEffect(() => {

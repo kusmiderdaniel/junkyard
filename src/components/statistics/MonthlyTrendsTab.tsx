@@ -124,7 +124,7 @@ export const MonthlyTrendsTab: React.FC<MonthlyTrendsTabProps> = ({
                     fontWeight: '500',
                   }}
                 />
-                {monthlyData.map((entry, index) => (
+                {monthlyData.map((_entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={`hsl(${220 + (index % 8) * 15}, 70%, 50%)`}

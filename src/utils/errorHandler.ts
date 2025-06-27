@@ -297,7 +297,7 @@ export const showInfoMessage = (message: string): void => {
 /**
  * Silent error handler for non-critical operations
  */
-export const handleSilentError = (error: any, context: string): void => {
+export const handleSilentError = (error: unknown, context: string): void => {
   logger.warn(
     `Silent error in ${context}`,
     isErrorWithMessage(error) ? error : undefined,

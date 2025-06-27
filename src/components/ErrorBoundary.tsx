@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { logger } from '../utils/logger';
 import { isErrorWithMessage } from '../types/common';
 import toast from 'react-hot-toast';
@@ -78,6 +78,9 @@ class ErrorBoundary extends Component<Props, State> {
 
   private async logErrorToService(error: Error, errorInfo: ErrorInfo) {
     try {
+      // Get user ID securely from Firebase Auth instead of localStorage
+      const userId = this.getCurrentUserIdSecure();
+
       const errorData = {
         message: error.message,
         stack: error.stack,
@@ -86,7 +89,7 @@ class ErrorBoundary extends Component<Props, State> {
         userAgent: navigator.userAgent,
         url: window.location.href,
         timestamp: new Date().toISOString(),
-        userId: localStorage.getItem('userId') || 'anonymous', // if you store user ID
+        userId: userId || 'anonymous',
       };
 
       // In a real app, send to error reporting service
@@ -111,6 +114,17 @@ class ErrorBoundary extends Component<Props, State> {
   private handleReload = () => {
     window.location.reload();
   };
+
+  private getCurrentUserIdSecure(): string | null {
+    try {
+      // Import Firebase auth dynamically to avoid circular dependencies
+      const { getCurrentUserId } = require('../firebase');
+      return getCurrentUserId();
+    } catch {
+      // If Firebase auth fails, return null instead of exposing data
+      return null;
+    }
+  }
 
   private handleRetry = () => {
     this.setState({

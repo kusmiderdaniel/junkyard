@@ -25,9 +25,9 @@ import {
   PageSnapshots,
 } from '../types/receipt';
 import { logger } from '../utils/logger';
-import { isErrorWithMessage } from '../types/common';
+import { isErrorWithMessage, AuthUser } from '../types/common';
 interface UseReceiptDataProps {
-  user: any;
+  user: AuthUser | null;
   currentPage: number;
   itemsPerPage: number;
   pageSnapshots: PageSnapshots;

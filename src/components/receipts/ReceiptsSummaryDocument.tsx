@@ -1,5 +1,12 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+  Font,
+} from '@react-pdf/renderer';
 
 // Register Roboto font with better Polish character support
 Font.register({
@@ -55,16 +62,16 @@ interface ReceiptsSummaryDocumentProps {
   totalAmount: number;
 }
 
-const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({ 
-  receipts, 
-  filterDescription, 
-  companyDetails, 
-  totalAmount 
+const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
+  receipts,
+  filterDescription,
+  companyDetails,
+  totalAmount,
 }) => {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pl-PL', {
       style: 'currency',
-      currency: 'PLN'
+      currency: 'PLN',
     }).format(amount);
   };
 
@@ -224,17 +231,21 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
     <Document>
       <Page size="A4" style={styles.page}>
         <Text style={styles.header}>Podsumowanie Kwitów</Text>
-        
+
         {companyDetails && (
           <View style={styles.companyInfo}>
             <Text style={styles.companyName}>{companyDetails.companyName}</Text>
             <Text style={styles.companyDetails}>
               {companyDetails.address && `${companyDetails.address}\n`}
-              {companyDetails.postalCode && companyDetails.city && `${companyDetails.postalCode} ${companyDetails.city}\n`}
+              {companyDetails.postalCode &&
+                companyDetails.city &&
+                `${companyDetails.postalCode} ${companyDetails.city}\n`}
               {companyDetails.numberNIP && `NIP: ${companyDetails.numberNIP}\n`}
-              {companyDetails.numberREGON && `REGON: ${companyDetails.numberREGON}\n`}
+              {companyDetails.numberREGON &&
+                `REGON: ${companyDetails.numberREGON}\n`}
               {companyDetails.email && `Email: ${companyDetails.email}\n`}
-              {companyDetails.phoneNumber && `Tel: ${companyDetails.phoneNumber}`}
+              {companyDetails.phoneNumber &&
+                `Tel: ${companyDetails.phoneNumber}`}
             </Text>
           </View>
         )}
@@ -259,19 +270,25 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
                 <Text style={styles.tableCellHeader}>Kwota</Text>
               </View>
             </View>
-            {receipts.map((receipt, index) => (
+            {receipts.map((receipt, _index) => (
               <View style={styles.tableRow} key={receipt.id} wrap={false}>
                 <View style={styles.tableCol}>
                   <Text style={styles.tableCell}>{receipt.number}</Text>
                 </View>
                 <View style={styles.tableCol}>
-                  <Text style={styles.tableCell}>{formatDate(receipt.date)}</Text>
+                  <Text style={styles.tableCell}>
+                    {formatDate(receipt.date)}
+                  </Text>
                 </View>
                 <View style={styles.tableCol}>
-                  <Text style={styles.tableCell}>{receipt.clientName || 'Nieznany klient'}</Text>
+                  <Text style={styles.tableCell}>
+                    {receipt.clientName || 'Nieznany klient'}
+                  </Text>
                 </View>
                 <View style={styles.tableCol}>
-                  <Text style={styles.tableCell}>{formatCurrency(receipt.totalAmount)}</Text>
+                  <Text style={styles.tableCell}>
+                    {formatCurrency(receipt.totalAmount)}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -286,11 +303,20 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
         </View>
 
         <Text style={styles.footer}>
-          Wygenerowano {new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+          Wygenerowano{' '}
+          {new Date().toLocaleDateString('pl-PL', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })}{' '}
+          {new Date().toLocaleTimeString('pl-PL', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </Text>
       </Page>
     </Document>
   );
 };
 
-export default ReceiptsSummaryDocument; 
+export default ReceiptsSummaryDocument;

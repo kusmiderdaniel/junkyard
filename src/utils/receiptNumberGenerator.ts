@@ -107,7 +107,7 @@ export const generateReceiptNumber = async (
     pendingOperations
       .filter(op => op.type === 'CREATE_RECEIPT')
       .forEach(operation => {
-        const receiptData = operation.data;
+        const receiptData = operation.data as any;
         if (receiptData && receiptData.date) {
           const receiptDate = new Date(receiptData.date);
           const receiptDay = receiptDate.getDate().toString().padStart(2, '0');
@@ -122,7 +122,11 @@ export const generateReceiptNumber = async (
             receiptYear === year
           ) {
             const receiptNumber = receiptData.number;
-            if (receiptNumber && receiptNumber.includes('/')) {
+            if (
+              receiptNumber &&
+              receiptNumber.includes &&
+              receiptNumber.includes('/')
+            ) {
               const parts = receiptNumber.split('/');
               if (
                 parts.length === 4 &&

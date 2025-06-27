@@ -8,12 +8,13 @@ import {
 import { encryptData, decryptData, isEncryptionAvailable } from './encryption';
 import { getCurrentUserId } from '../firebase';
 import { logger } from './logger';
+import { SyncableEntity } from '../types/common';
 
 // Types for offline operations queue
 export interface PendingOperation {
   id: string;
   type: 'CREATE_CLIENT' | 'CREATE_RECEIPT' | 'UPDATE_CLIENT' | 'DELETE_CLIENT';
-  data: any;
+  data: SyncableEntity | PendingClient | PendingReceipt;
   timestamp: number;
   retryCount: number;
 }
@@ -49,7 +50,7 @@ const getUserIdSafe = (): string | null => {
 
 // Secure storage wrapper
 const secureStorage = {
-  setItem: async (key: string, data: any): Promise<void> => {
+  setItem: async (key: string, data: unknown): Promise<void> => {
     const userId = getUserIdSafe();
     if (!userId || !isEncryptionAvailable()) {
       // Fallback to regular storage if no user or encryption unavailable

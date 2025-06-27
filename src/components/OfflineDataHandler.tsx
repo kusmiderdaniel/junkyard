@@ -125,6 +125,8 @@ const OfflineDataHandler: React.FC = () => {
       const timeoutId = setTimeout(cacheUserData, 2000);
       return () => clearTimeout(timeoutId);
     }
+    // Return cleanup function for when dependencies change but condition isn't met
+    return () => {};
   }, [user, isOnline, cacheUserData]);
 
   return null; // This component doesn't render anything

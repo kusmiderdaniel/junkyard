@@ -265,7 +265,7 @@ export const ClientsTab: React.FC<ClientsTabProps> = ({
                     fill="#374151"
                     offset={5}
                   />
-                  {chartData.map((entry, index) => (
+                  {chartData.map((_entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={`hsl(${120 + (index % 12) * 25}, 70%, 50%)`}

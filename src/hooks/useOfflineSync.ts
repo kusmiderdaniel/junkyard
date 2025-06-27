@@ -5,6 +5,7 @@ import { syncService, SyncResult } from '../utils/syncService';
 import { offlineStorage } from '../utils/offlineStorage';
 import { logger } from '../utils/logger';
 import { isErrorWithMessage } from '../types/common';
+import { Client, Receipt } from '../types/receipt';
 export const useOfflineSync = () => {
   const { user } = useAuth();
   const { isOnline, isOffline } = useOfflineStatus();
@@ -163,7 +164,7 @@ export const useOfflineSync = () => {
 
   // Helper function to add offline client
   const addOfflineClient = useCallback(
-    async (clientData: any) => {
+    async (clientData: Omit<Client, 'id'>) => {
       if (!user) return null;
 
       const tempId = await offlineStorage.addPendingClient({
@@ -179,7 +180,7 @@ export const useOfflineSync = () => {
 
   // Helper function to add offline receipt
   const addOfflineReceipt = useCallback(
-    async (receiptData: any) => {
+    async (receiptData: Omit<Receipt, 'id'>) => {
       if (!user) return null;
 
       const tempId = await offlineStorage.addPendingReceipt({
