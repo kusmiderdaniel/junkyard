@@ -341,7 +341,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 </label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     step="0.01"
                     placeholder="0,00"
                     value={getPriceEditValue('buy_price', newProduct.buy_price)}
@@ -362,7 +363,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 </label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     step="0.01"
                     placeholder="0,00"
                     value={getPriceEditValue(

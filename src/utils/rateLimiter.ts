@@ -251,9 +251,17 @@ class RobustRateLimiter {
   }
 
   /**
-   * Initialize session tracking to detect evasion attempts
+   * Track new sessions to detect suspicious patterns (e.g., clearing localStorage to bypass limits)
    */
   private initializeSessionTracking(): void {
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('Skipping session tracking in development mode', undefined, {
+        component: 'RobustRateLimiter',
+        operation: 'initializeSessionTracking',
+      });
+      return;
+    }
+
     try {
       const sessionId =
         'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);

@@ -405,15 +405,10 @@ const deduplicateAndCleanEntries = <T extends { id: string }>(
 
     // Skip if we've seen this business combination before
     if (businessKey && seenBusinessKeys.has(businessKey)) {
-      logger.debug(
-        `Skipping duplicate business key: ${businessKey} (ID: ${entry.id})`,
-        undefined,
-        {
-          component: 'OfflineStorage',
-          operation: 'deduplicateAndCleanEntries',
-          extra: { businessKey, entryId: entry.id },
-        }
-      );
+      // logger.debug(
+      //   `Skipping duplicate business key: ${businessKey} (ID: ${entry.id})`,
+      //   { component: 'offlineStorage', operation: 'deduplicate' }
+      // );
       continue;
     }
 
