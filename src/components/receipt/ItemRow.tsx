@@ -51,6 +51,13 @@ const ItemRow: React.FC<ItemRowProps> = ({
   const [buyPriceEdit, setBuyPriceEdit] = useState<string>('');
   const [quantityEdit, setQuantityEdit] = useState<string>('');
 
+  // Helper function to get buy price display value (similar to ProductModal)
+  const getBuyPriceEditValue = (originalValue: number) => {
+    return buyPriceEdit !== ''
+      ? buyPriceEdit
+      : originalValue.toFixed(2).replace('.', ',');
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(productSearchTerm.toLowerCase())
   );
@@ -216,30 +223,26 @@ const ItemRow: React.FC<ItemRowProps> = ({
               quantityEdit !== ''
                 ? quantityEdit
                 : item.quantity > 0
-                  ? item.quantity.toFixed(2)
+                  ? item.quantity.toFixed(2).replace('.', ',')
                   : ''
             }
             onChange={e => {
-              // Allow only digits and decimal point
-              const value = e.target.value.replace(/[^\d.]/g, '');
-              // Ensure only one decimal point
-              const parts = value.split('.');
-              const formattedValue =
-                parts.length > 2
-                  ? parts[0] + '.' + parts.slice(1).join('')
-                  : value;
-              setQuantityEdit(formattedValue);
+              const value = e.target.value;
+              setQuantityEdit(value);
             }}
-            onBlur={e => {
-              const parsedValue = parseFloat(e.target.value) || 0;
-              onQuantityChange(index, parsedValue);
-              setQuantityEdit(''); // Clear edit state
+            onBlur={() => {
+              if (quantityEdit !== '') {
+                // Convert comma to dot for parsing
+                const normalizedValue = quantityEdit.replace(',', '.');
+                const numericValue = parseFloat(normalizedValue) || 0;
+                onQuantityChange(index, numericValue);
+                // Update display to show formatted value with comma
+                setQuantityEdit(numericValue.toFixed(2).replace('.', ','));
+              }
             }}
             onFocus={e => {
-              // Initialize edit state with current value
-              setQuantityEdit(item.quantity ? item.quantity.toString() : '');
-              // Select all text for easy replacement (delay to ensure DOM update)
-              setTimeout(() => e.target.select(), 0);
+              // Select all text for easy replacement
+              e.target.select();
             }}
             className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right ${
               hasErrors && !hasValidQuantity
@@ -257,34 +260,24 @@ const ItemRow: React.FC<ItemRowProps> = ({
           <input
             type="text"
             inputMode="decimal"
-            value={
-              buyPriceEdit !== ''
-                ? buyPriceEdit
-                : item.buy_price > 0
-                  ? item.buy_price.toFixed(2)
-                  : ''
-            }
+            value={getBuyPriceEditValue(item.buy_price)}
             onChange={e => {
-              // Allow only digits and decimal point
-              const value = e.target.value.replace(/[^\d.]/g, '');
-              // Ensure only one decimal point
-              const parts = value.split('.');
-              const formattedValue =
-                parts.length > 2
-                  ? parts[0] + '.' + parts.slice(1).join('')
-                  : value;
-              setBuyPriceEdit(formattedValue);
+              const value = e.target.value;
+              setBuyPriceEdit(value);
             }}
-            onBlur={e => {
-              const parsedValue = parseFloat(e.target.value) || 0;
-              onBuyPriceChange(index, parsedValue);
-              setBuyPriceEdit(''); // Clear edit state
+            onBlur={() => {
+              if (buyPriceEdit !== '') {
+                // Convert comma to dot for parsing
+                const normalizedValue = buyPriceEdit.replace(',', '.');
+                const numericValue = parseFloat(normalizedValue) || 0;
+                onBuyPriceChange(index, numericValue);
+                // Update display to show formatted value with comma
+                setBuyPriceEdit(numericValue.toFixed(2).replace('.', ','));
+              }
             }}
             onFocus={e => {
-              // Initialize edit state with current value
-              setBuyPriceEdit(item.buy_price ? item.buy_price.toString() : '');
-              // Select all text for easy replacement (delay to ensure DOM update)
-              setTimeout(() => e.target.select(), 0);
+              // Select all text for easy replacement
+              e.target.select();
             }}
             className={`w-full px-2 py-2 border rounded-md focus:outline-none focus:ring-2 text-right ${
               hasErrors && !hasValidBuyPrice

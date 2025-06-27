@@ -56,7 +56,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   ) => {
     return priceEdits[field] !== undefined
       ? priceEdits[field]
-      : originalValue.toFixed(2);
+      : originalValue.toFixed(2).replace('.', ',');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,15 +136,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const handleBuyPriceBlur = () => {
     const value = priceEdits.buy_price;
     if (value !== undefined) {
-      const numericValue = parseFloat(value) || 0;
+      // Convert comma to dot for parsing
+      const normalizedValue = value.replace(',', '.');
+      const numericValue = parseFloat(normalizedValue) || 0;
       setNewProduct({
         ...newProduct,
         buy_price: numericValue,
       });
-      // Update display to show formatted value
+      // Update display to show formatted value with comma
       setPriceEdits(prev => ({
         ...prev,
-        buy_price: numericValue.toFixed(2),
+        buy_price: numericValue.toFixed(2).replace('.', ','),
       }));
     }
   };
@@ -152,15 +154,17 @@ const ProductModal: React.FC<ProductModalProps> = ({
   const handleSellPriceBlur = () => {
     const value = priceEdits.sell_price;
     if (value !== undefined) {
-      const numericValue = parseFloat(value) || 0;
+      // Convert comma to dot for parsing
+      const normalizedValue = value.replace(',', '.');
+      const numericValue = parseFloat(normalizedValue) || 0;
       setNewProduct({
         ...newProduct,
         sell_price: numericValue,
       });
-      // Update display to show formatted value
+      // Update display to show formatted value with comma
       setPriceEdits(prev => ({
         ...prev,
-        sell_price: numericValue.toFixed(2),
+        sell_price: numericValue.toFixed(2).replace('.', ','),
       }));
     }
   };
