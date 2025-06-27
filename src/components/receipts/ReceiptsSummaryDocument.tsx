@@ -139,7 +139,7 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
       minHeight: 20,
     },
     tableColHeader: {
-      width: '25%',
+      width: '33.33%',
       borderStyle: 'solid',
       borderWidth: 1,
       borderLeftWidth: 0,
@@ -147,7 +147,7 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
       backgroundColor: '#f1f3f4',
     },
     tableCol: {
-      width: '25%',
+      width: '33.33%',
       borderStyle: 'solid',
       borderWidth: 1,
       borderLeftWidth: 0,
@@ -264,9 +264,6 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
                 <Text style={styles.tableCellHeader}>Data</Text>
               </View>
               <View style={styles.tableColHeader}>
-                <Text style={styles.tableCellHeader}>Klient</Text>
-              </View>
-              <View style={styles.tableColHeader}>
                 <Text style={styles.tableCellHeader}>Kwota</Text>
               </View>
             </View>
@@ -278,11 +275,6 @@ const ReceiptsSummaryDocument: React.FC<ReceiptsSummaryDocumentProps> = ({
                 <View style={styles.tableCol}>
                   <Text style={styles.tableCell}>
                     {formatDate(receipt.date)}
-                  </Text>
-                </View>
-                <View style={styles.tableCol}>
-                  <Text style={styles.tableCell}>
-                    {receipt.clientName || 'Nieznany klient'}
                   </Text>
                 </View>
                 <View style={styles.tableCol}>
