@@ -1,4 +1,4 @@
-import React from 'react';
+// React import removed - using new JSX transform
 import { render } from '@testing-library/react';
 import LoadingSpinner from './LoadingSpinner';
 

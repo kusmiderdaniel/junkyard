@@ -1,4 +1,4 @@
-import React from 'react';
+// React import removed - using new JSX transform
 import { db } from '../../firebase';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { pdf } from '@react-pdf/renderer';
@@ -11,7 +11,8 @@ import {
   CompanyDetails,
   ExcelRowData,
 } from '../../types/receipt';
-
+import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
 interface ReceiptExportActionsProps {
   user: any;
   selectedMonth: string;
@@ -26,7 +27,7 @@ export const useReceiptExportActions = ({
   user,
   selectedMonth,
   searchTerm,
-  clients,
+  clients: _clients, // Renamed to indicate intentionally unused
   companyDetails,
   getClientName,
   formatMonthLabel,
@@ -140,7 +141,14 @@ export const useReceiptExportActions = ({
       URL.revokeObjectURL(url);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error generating summary PDF:', error);
+        logger.error(
+          'Error generating summary PDF',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ReceiptExportActions',
+            operation: 'handlePrintSummary',
+          }
+        );
       }
       toast.error('Wystąpił błąd podczas generowania podsumowania PDF.');
     }

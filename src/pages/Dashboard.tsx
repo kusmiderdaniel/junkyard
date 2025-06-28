@@ -13,45 +13,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { usePDFReceipt } from '../components/PDFReceipt';
-
-interface ReceiptItem {
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  total_price: number;
-}
-
-interface Receipt {
-  id: string;
-  number: string;
-  date: Date;
-  clientId: string;
-  clientName?: string;
-  userID: string;
-  totalAmount: number;
-  items: ReceiptItem[];
-}
-
-interface Client {
-  id: string;
-  name: string;
-  address: string;
-  documentNumber: string;
-}
-
-interface CompanyDetails {
-  companyName: string;
-  numberNIP: string;
-  numberREGON: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  email: string;
-  phoneNumber: string;
-}
+import { Receipt, Client, CompanyDetails } from '../types/receipt';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();

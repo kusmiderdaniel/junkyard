@@ -1,29 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { db } from '../firebase';
 import {
   collection,
   getDocs,
   query,
+  where,
+  orderBy,
   limit,
   startAfter,
-  DocumentData,
-  QueryDocumentSnapshot,
-  getCountFromServer,
-  orderBy,
-  where,
   doc,
-  updateDoc,
   deleteDoc,
+  updateDoc,
+  getCountFromServer,
+  QueryDocumentSnapshot,
+  DocumentData,
 } from 'firebase/firestore';
-import toast from 'react-hot-toast';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import AddClientModal from '../components/AddClientModal';
+import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { normalizePolishText, createSearchableText } from '../utils/textUtils';
-import { useOfflineStatus } from '../hooks/useOfflineStatus';
-import { useOfflineSync } from '../hooks/useOfflineSync';
 import { offlineStorage } from '../utils/offlineStorage';
+import { useOfflineStatus } from '../hooks/useOfflineStatus';
+import { normalizePolishText, createSearchableText } from '../utils/textUtils';
+import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
+import { useNavigate } from 'react-router-dom';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 import { Client as BaseClient } from '../types/receipt';
 import { createSanitizedInputHandler } from '../utils/inputSanitizer';
 
@@ -240,12 +242,16 @@ const Clients: React.FC = () => {
           setClients(paginated);
         } catch (searchError) {
           // Fallback to client-side filtering if server-side search fails
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(
-              'Server-side search failed, falling back to client-side filtering:',
-              searchError
-            );
-          }
+          logger.warn(
+            'Server-side search failed, falling back to client-side filtering',
+            isErrorWithMessage(searchError) ? searchError : undefined,
+            {
+              component: 'Clients',
+              operation: 'fetchClients',
+              userId: user.uid,
+              extra: { searchTerm: activeSearchTerm },
+            }
+          );
 
           const allClientsQuery = query(
             clientsCollection,
@@ -335,7 +341,15 @@ const Clients: React.FC = () => {
     } catch (error) {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
-        console.warn('Online fetch failed, trying cached data:', error);
+        logger.warn(
+          'Online fetch failed, trying cached data',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'Clients',
+            operation: 'fetchClients',
+            userId: user.uid,
+          }
+        );
         const cachedClients = await offlineStorage.getCachedClients();
         if (cachedClients.length > 0) {
           setClients(cachedClients.slice(0, itemsPerPage));

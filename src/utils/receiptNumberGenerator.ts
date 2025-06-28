@@ -7,7 +7,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { offlineStorage } from './offlineStorage';
-
+import { logger } from './logger';
+import { isErrorWithMessage } from '../types/common';
 export const generateReceiptNumber = async (
   selectedDate: string,
   userUID: string,
@@ -55,8 +56,13 @@ export const generateReceiptNumber = async (
           }
         });
       } catch (error) {
-        console.warn(
-          'Failed to fetch online receipts for numbering, using cached data only'
+        logger.warn(
+          'Failed to fetch online receipts for numbering, using cached data only',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ReceiptNumberGenerator',
+            operation: 'generateReceiptNumber',
+          }
         );
       }
     }
@@ -101,7 +107,7 @@ export const generateReceiptNumber = async (
     pendingOperations
       .filter(op => op.type === 'CREATE_RECEIPT')
       .forEach(operation => {
-        const receiptData = operation.data;
+        const receiptData = operation.data as any;
         if (receiptData && receiptData.date) {
           const receiptDate = new Date(receiptData.date);
           const receiptDay = receiptDate.getDate().toString().padStart(2, '0');
@@ -116,7 +122,11 @@ export const generateReceiptNumber = async (
             receiptYear === year
           ) {
             const receiptNumber = receiptData.number;
-            if (receiptNumber && receiptNumber.includes('/')) {
+            if (
+              receiptNumber &&
+              receiptNumber.includes &&
+              receiptNumber.includes('/')
+            ) {
               const parts = receiptNumber.split('/');
               if (
                 parts.length === 4 &&

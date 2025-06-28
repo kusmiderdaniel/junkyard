@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { createSanitizedInputHandler } from '../utils/inputSanitizer';
+import { normalizePolishText, createSearchableText } from '../utils/textUtils';
+import toast from 'react-hot-toast';
+import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
+import withErrorBoundary from './withErrorBoundary';
 import { useOfflineStatus } from '../hooks/useOfflineStatus';
 import { useOfflineSync } from '../hooks/useOfflineSync';
-import { normalizePolishText, createSearchableText } from '../utils/textUtils';
+import { useRateLimitedOperations } from '../utils/rateLimitedFirebase';
 import {
   sanitizeClientData,
-  createSanitizedInputHandler,
   validateInputSafety,
 } from '../utils/inputSanitizer';
-import { useRateLimitedOperations } from '../utils/rateLimitedFirebase';
-import toast from 'react-hot-toast';
 
 type Client = {
   name: string;
@@ -188,27 +191,8 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
       } else {
         // Add mode - create new client
         if (isOffline) {
-          // Add to offline queue
-          const tempId = await addOfflineClient({
-            ...clientData,
-            name_lowercase: clientData.name.toLowerCase(),
-            name_normalized: normalizePolishText(clientData.name),
-            address_normalized: normalizePolishText(clientData.address),
-            documentNumber_normalized: normalizePolishText(
-              clientData.documentNumber
-            ),
-            postalCode_normalized: normalizePolishText(clientData.postalCode),
-            city_normalized: normalizePolishText(clientData.city),
-            fullAddress_normalized: normalizePolishText(fullAddress),
-            searchableText: createSearchableText([
-              clientData.name,
-              clientData.address,
-              clientData.documentNumber,
-              clientData.postalCode,
-              clientData.city,
-              fullAddress,
-            ]),
-          });
+          // Add to offline queue - only basic client data
+          const tempId = await addOfflineClient(clientData);
 
           if (tempId) {
             toast.success(
@@ -687,4 +671,19 @@ const AddClientModal: React.FC<AddClientModalProps> = ({
   );
 };
 
-export default AddClientModal;
+export default withErrorBoundary(AddClientModal, {
+  context: 'Add Client Modal',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'Add client modal error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'AddClientModal',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

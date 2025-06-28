@@ -3,7 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useOfflineStatus } from './useOfflineStatus';
 import { syncService, SyncResult } from '../utils/syncService';
 import { offlineStorage } from '../utils/offlineStorage';
-
+import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
+import { Client, Receipt } from '../types/receipt';
 export const useOfflineSync = () => {
   const { user } = useAuth();
   const { isOnline, isOffline } = useOfflineStatus();
@@ -40,16 +42,26 @@ export const useOfflineSync = () => {
       // Keep sync protection active for longer after completion
       setTimeout(() => {
         setSyncProtectionActive(false);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🛡️ Sync protection deactivated - data fetching allowed');
-        }
+        logger.debug(
+          'Sync protection deactivated - data fetching allowed',
+          undefined,
+          {
+            component: 'useOfflineSync',
+            operation: 'triggerSync',
+          }
+        );
       }, 2000); // Extended protection period
 
       return result;
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Manual sync failed:', error);
-      }
+      logger.error(
+        'Manual sync failed',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'useOfflineSync',
+          operation: 'triggerSync',
+        }
+      );
       setSyncProtectionActive(false);
       const errorResult: SyncResult = {
         success: false,
@@ -75,11 +87,13 @@ export const useOfflineSync = () => {
         !syncService.getIsSyncing() &&
         (await syncService.hasPendingOperations())
       ) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            '🔄 User came back online with pending operations, starting auto-sync'
-          );
-        }
+        logger.info(
+          'User came back online with pending operations, starting auto-sync',
+          {
+            component: 'useOfflineSync',
+            operation: 'checkAndSync',
+          }
+        );
 
         // Wait longer to ensure stable connection and prevent race conditions
         timeoutId = setTimeout(async () => {
@@ -88,16 +102,26 @@ export const useOfflineSync = () => {
 
             // After sync completes, trigger a refresh of data to ensure consistency
             setTimeout(() => {
-              if (process.env.NODE_ENV === 'development') {
-                console.log('📱 Sync completed, triggering data refresh...');
-              }
+              logger.debug(
+                'Sync completed, triggering data refresh...',
+                undefined,
+                {
+                  component: 'useOfflineSync',
+                  operation: 'checkAndSync',
+                }
+              );
               // Trigger a custom event that components can listen to for data refresh
               window.dispatchEvent(new CustomEvent('sync-completed'));
             }, 500);
           } catch (error) {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('Auto-sync failed:', error);
-            }
+            logger.error(
+              'Auto-sync failed',
+              isErrorWithMessage(error) ? error : undefined,
+              {
+                component: 'useOfflineSync',
+                operation: 'checkAndSync',
+              }
+            );
           }
         }, 3000); // Increased to 3 seconds for better stability
       }
@@ -140,7 +164,7 @@ export const useOfflineSync = () => {
 
   // Helper function to add offline client
   const addOfflineClient = useCallback(
-    async (clientData: any) => {
+    async (clientData: Omit<Client, 'id'>) => {
       if (!user) return null;
 
       const tempId = await offlineStorage.addPendingClient({
@@ -156,7 +180,7 @@ export const useOfflineSync = () => {
 
   // Helper function to add offline receipt
   const addOfflineReceipt = useCallback(
-    async (receiptData: any) => {
+    async (receiptData: Omit<Receipt, 'id'>) => {
       if (!user) return null;
 
       const tempId = await offlineStorage.addPendingReceipt({

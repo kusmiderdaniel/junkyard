@@ -17,7 +17,8 @@ import rateLimiter from './rateLimiter';
 import toast from 'react-hot-toast';
 import { idMappingService } from './idMappingService';
 import { cacheUpdateService } from './cacheUpdateService';
-
+import { logger } from './logger';
+import { isErrorWithMessage } from '../types/common';
 export interface SyncResult {
   success: boolean;
   syncedOperations: number;
@@ -112,12 +113,18 @@ class SyncService {
         await offlineStorage.removePendingOperation(operation.id);
         result.syncedOperations++;
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error(
-            `❌ Failed to sync operation: ${operation.type} (${operation.id})`,
-            error
-          );
-        }
+        logger.error(
+          `Failed to sync operation: ${operation.type} (${operation.id})`,
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'SyncService',
+            operation: 'syncPendingOperations',
+            extra: {
+              operationType: operation.type,
+              operationId: operation.id,
+            },
+          }
+        );
         result.failedOperations++;
         result.errors.push(
           `${operation.type}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -159,14 +166,20 @@ class SyncService {
       const consistencyCheck =
         await cacheUpdateService.verifyCacheConsistency();
       if (!consistencyCheck.isConsistent) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            '⚠️ Cache consistency issues found:',
-            consistencyCheck.issues
-          );
-          if (consistencyCheck.fixed.length > 0) {
-            console.log('🔧 Auto-fixed issues:', consistencyCheck.fixed);
-          }
+        logger.warn('Cache consistency issues found', undefined, {
+          component: 'SyncService',
+          operation: 'syncPendingOperations',
+          extra: {
+            issues: consistencyCheck.issues,
+            autoFixed: consistencyCheck.fixed,
+          },
+        });
+        if (consistencyCheck.fixed.length > 0) {
+          logger.debug('Auto-fixed cache issues', undefined, {
+            component: 'SyncService',
+            operation: 'syncPendingOperations',
+            extra: { fixed: consistencyCheck.fixed },
+          });
         }
       }
     }
@@ -247,7 +260,9 @@ class SyncService {
         await this.syncUpdateClient(operation.data, userUID);
         break;
       case 'DELETE_CLIENT':
-        await this.syncDeleteClient(operation.data.clientId, userUID);
+        // For DELETE_CLIENT operations, the data should contain clientId
+        const deleteData = operation.data as any; // Type assertion for delete operation
+        await this.syncDeleteClient(deleteData.clientId, userUID);
         break;
       default:
         throw new Error(`Unknown operation type: ${operation.type}`);
@@ -367,7 +382,7 @@ class SyncService {
 
   private async syncDeleteClient(
     clientId: string,
-    userUID: string
+    _userUID: string // Renamed to indicate intentionally unused
   ): Promise<void> {
     await deleteDoc(doc(db, 'clients', clientId));
 

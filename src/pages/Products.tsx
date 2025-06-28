@@ -1,20 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   collection,
-  getDocs,
-  doc,
-  updateDoc,
   addDoc,
-  deleteDoc,
+  getDocs,
   query,
   where,
+  updateDoc,
+  deleteDoc,
+  doc,
 } from 'firebase/firestore';
-import toast from 'react-hot-toast';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { useOfflineStatus } from '../hooks/useOfflineStatus';
-import { offlineStorage } from '../utils/offlineStorage';
 import { Product, Category } from '../types/receipt';
+import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
+import { offlineStorage } from '../utils/offlineStorage';
+import { useOfflineStatus } from '../hooks/useOfflineStatus';
+import toast from 'react-hot-toast';
 import CategoryModal from '../components/products/CategoryModal';
 import ProductModal from '../components/products/ProductModal';
 import ProductsTable from '../components/products/ProductsTable';
@@ -103,9 +105,14 @@ const Products: React.FC = () => {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            'Online products/categories fetch failed, trying cached data:',
-            error
+          logger.warn(
+            'Online products/categories fetch failed, trying cached data',
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'Products',
+              operation: 'fetchData',
+              userId: user.uid,
+            }
           );
         }
         const cachedCategories = await offlineStorage.getCachedCategories();

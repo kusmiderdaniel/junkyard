@@ -24,9 +24,10 @@ import {
   CompanyDetails,
   PageSnapshots,
 } from '../types/receipt';
-
+import { logger } from '../utils/logger';
+import { isErrorWithMessage, AuthUser } from '../types/common';
 interface UseReceiptDataProps {
-  user: any;
+  user: AuthUser | null;
   currentPage: number;
   itemsPerPage: number;
   pageSnapshots: PageSnapshots;
@@ -74,86 +75,64 @@ export const useReceiptData = ({
     if (!user) return;
 
     try {
-      // If offline or sync in progress, use cached data only
-      if (isOffline || syncService.getIsSyncing()) {
-        const cachedCompanyDetails =
-          await offlineStorage.getCachedCompanyDetails();
-        if (cachedCompanyDetails) {
-          setCompanyDetails(cachedCompanyDetails);
-        } else {
-          setCompanyDetails({
-            companyName: 'Your Company',
-            numberNIP: '',
-            numberREGON: '',
-            address: '',
-            postalCode: '',
-            city: '',
-            email: '',
-            phoneNumber: '',
-          });
-        }
-        return;
-      }
+      let details: CompanyDetails | null = null;
 
-      // Online mode - fetch from Firebase
-      const docRef = doc(db, 'companyDetails', user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const companyData = docSnap.data() as CompanyDetails;
-        // Cache the company details for offline use
-        await offlineStorage.cacheCompanyDetails(companyData);
-        setCompanyDetails(companyData);
+      if (isOffline) {
+        details = await offlineStorage.getCachedCompanyDetails();
       } else {
-        const defaultCompanyDetails = {
-          companyName: 'Your Company',
-          numberNIP: '',
-          numberREGON: '',
-          address: '',
-          postalCode: '',
-          city: '',
-          email: '',
-          phoneNumber: '',
-        };
-        setCompanyDetails(defaultCompanyDetails);
-      }
-    } catch (error) {
-      // If online fetch fails, try cached data as fallback
-      if (!isOffline) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            'Online company details fetch failed, trying cached data:',
-            error
+        try {
+          const companyDocRef = doc(db, 'companyDetails', user.uid);
+          const companyDocSnap = await getDoc(companyDocRef);
+
+          if (companyDocSnap.exists()) {
+            details = companyDocSnap.data() as CompanyDetails;
+
+            // Cache the company details for offline use
+            if (details) {
+              await offlineStorage.cacheCompanyDetails(details);
+            }
+          }
+        } catch (onlineError) {
+          logger.warn(
+            'Online company details fetch failed, trying cached data',
+            isErrorWithMessage(onlineError) ? onlineError : undefined,
+            {
+              component: 'useReceiptData',
+              operation: 'fetchCompanyDetails',
+              userId: user.uid,
+            }
           );
+
+          // Try cached data if online fetch fails
+          details = await offlineStorage.getCachedCompanyDetails();
         }
-        const cachedCompanyDetails =
-          await offlineStorage.getCachedCompanyDetails();
-        if (cachedCompanyDetails) {
-          setCompanyDetails(cachedCompanyDetails);
-        } else {
-          setCompanyDetails({
-            companyName: 'Your Company',
-            numberNIP: '',
-            numberREGON: '',
-            address: '',
-            postalCode: '',
-            city: '',
-            email: '',
-            phoneNumber: '',
-          });
-        }
-      } else {
-        setCompanyDetails({
-          companyName: 'Your Company',
-          numberNIP: '',
-          numberREGON: '',
-          address: '',
-          postalCode: '',
-          city: '',
-          email: '',
-          phoneNumber: '',
-        });
       }
+
+      // Fallback to default company details if fetch fails
+      if (!details) {
+        details = {
+          companyName: 'Nazwa firmy',
+          numberNIP: 'NIP',
+          numberREGON: 'REGON',
+          address: 'Adres',
+          postalCode: 'Kod pocztowy',
+          city: 'Miasto',
+          email: 'email@example.com',
+          phoneNumber: 'Telefon',
+        };
+      }
+
+      setCompanyDetails(details);
+    } catch (error) {
+      logger.error(
+        'Error fetching company details',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'useReceiptData',
+          operation: 'fetchCompanyDetails',
+          userId: user?.uid,
+        }
+      );
     }
   }, [user, isOffline]);
 
@@ -162,46 +141,52 @@ export const useReceiptData = ({
     if (!user) return;
 
     try {
-      // If offline or sync in progress, use cached data only
-      if (isOffline || syncService.getIsSyncing()) {
+      if (isOffline) {
         const cachedClients = await offlineStorage.getCachedClients();
         setClients(cachedClients);
-        return;
-      }
-
-      // Online mode - fetch from Firebase
-      const clientsQuery = query(
-        collection(db, 'clients'),
-        where('userID', '==', user.uid)
-      );
-      const clientsSnapshot = await getDocs(clientsQuery);
-      const clientsData = clientsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Client[];
-
-      // Merge the clients with existing cache to prevent duplicates
-      await offlineStorage.mergeClients(clientsData);
-
-      setClients(clientsData);
-    } catch (error) {
-      // If online fetch fails, try cached data as fallback
-      if (!isOffline) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            'Online client fetch failed, trying cached data:',
-            error
-          );
-        }
-        const cachedClients = await offlineStorage.getCachedClients();
-        if (cachedClients.length > 0) {
-          setClients(cachedClients);
-        } else {
-          setClients([]);
-        }
       } else {
-        setClients([]);
+        try {
+          const clientsQuery = query(
+            collection(db, 'clients'),
+            where('userID', '==', user.uid),
+            orderBy('name')
+          );
+          const clientsSnapshot = await getDocs(clientsQuery);
+          const clientsData = clientsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Client[];
+
+          setClients(clientsData);
+
+          // Cache for offline use
+          await offlineStorage.cacheClients(clientsData);
+        } catch (onlineError) {
+          logger.warn(
+            'Online clients fetch failed, trying cached data',
+            isErrorWithMessage(onlineError) ? onlineError : undefined,
+            {
+              component: 'useReceiptData',
+              operation: 'fetchClients',
+              userId: user.uid,
+            }
+          );
+
+          // Fallback to cached data
+          const cachedClients = await offlineStorage.getCachedClients();
+          setClients(cachedClients);
+        }
       }
+    } catch (error) {
+      logger.error(
+        'Error fetching clients',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'useReceiptData',
+          operation: 'fetchClients',
+          userId: user?.uid,
+        }
+      );
     }
   }, [user, isOffline]);
 
@@ -251,12 +236,15 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try to generate from cached data
       if (!isOffline) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(
-            'Online available months fetch failed, trying cached data:',
-            error
-          );
-        }
+        logger.warn(
+          'Online available months fetch failed, trying cached data',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'useReceiptData',
+            operation: 'fetchAvailableMonths',
+            userId: user.uid,
+          }
+        );
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           const months = new Set<string>();
@@ -386,9 +374,11 @@ export const useReceiptData = ({
         const paginated = filteredReceipts.slice(start, start + itemsPerPage);
         setReceipts(paginated);
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📱 Loaded receipts from cache (offline mode)');
-        }
+        logger.info('Loaded receipts from cache (offline mode)', {
+          component: 'useReceiptData',
+          operation: 'fetchReceipts',
+          extra: { receiptCount: paginated.length },
+        });
         return;
       }
 
@@ -519,12 +509,15 @@ export const useReceiptData = ({
           const paginated = filteredReceipts.slice(start, start + itemsPerPage);
           setReceipts(paginated);
         } catch (searchError) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(
-              'Search failed, falling back to basic query:',
-              searchError
-            );
-          }
+          logger.warn(
+            'Search failed, falling back to basic query',
+            isErrorWithMessage(searchError) ? searchError : undefined,
+            {
+              component: 'useReceiptData',
+              operation: 'fetchReceipts',
+              userId: user.uid,
+            }
+          );
 
           // Fallback to basic query if search fails
           let fallbackQuery = query(
@@ -650,7 +643,15 @@ export const useReceiptData = ({
     } catch (error) {
       // If online fetch fails, try to use cached data as fallback
       if (!isOffline) {
-        console.warn('Online receipt fetch failed, trying cached data:', error);
+        logger.warn(
+          'Online receipt fetch failed, trying cached data',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'useReceiptData',
+            operation: 'fetchReceipts',
+            userId: user.uid,
+          }
+        );
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           setReceipts(cachedReceipts.slice(0, itemsPerPage));
@@ -691,9 +692,10 @@ export const useReceiptData = ({
     let timeoutId: NodeJS.Timeout;
 
     const handleSyncCompleted = async () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📡 Sync completed - refreshing data...');
-      }
+      logger.debug('Sync completed - refreshing data...', undefined, {
+        component: 'useReceiptData',
+        operation: 'handleSyncCompleted',
+      });
 
       // Force refresh all data after sync with longer delay
       timeoutId = setTimeout(async () => {

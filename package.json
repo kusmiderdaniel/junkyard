@@ -54,7 +54,8 @@
     "version:dev": "node scripts/generate-version.js development",
     "version:staging": "node scripts/generate-version.js staging",
     "version:prod": "node scripts/generate-version.js production",
-    "version:show": "node -p \"require('./src/version.json').current\""
+    "version:show": "node -p \"require('./src/version.json').current\"",
+    "check:console": "node scripts/check-console-statements.js"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -79,14 +80,9 @@
   },
   "overrides": {
     "nth-check": "^2.1.1",
-    "webpack-dev-server": "^5.2.2",
     "resolve-url-loader": "^5.0.0",
     "react-scripts": {
-      "postcss": "^8.4.31",
-      "webpack-dev-server": "^5.2.2"
-    },
-    "@pmmmwh/react-refresh-webpack-plugin": {
-      "webpack-dev-server": "^5.2.2"
+      "postcss": "^8.4.31"
     }
   },
   "devDependencies": {

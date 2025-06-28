@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import {
   collection,
@@ -15,50 +15,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePDFReceipt } from '../components/PDFReceipt';
 // ExcelJS will be lazy loaded
 import { createSanitizedInputHandler } from '../utils/inputSanitizer';
-
-interface ReceiptItem {
-  productId: string;
-  itemName: string;
-  itemCode: string;
-  quantity: number;
-  unit: string;
-  sell_price: number;
-  buy_price: number;
-  weightAdjustment: number;
-  total_price: number;
-}
-
-interface Receipt {
-  id: string;
-  number: string;
-  date: Date;
-  clientId: string;
-  clientName?: string;
-  userID: string;
-  totalAmount: number;
-  items: ReceiptItem[];
-}
-
-interface Client {
-  id: string;
-  name: string;
-  address: string;
-  documentNumber: string;
-  postalCode?: string;
-  city?: string;
-  fullAddress?: string;
-}
-
-interface CompanyDetails {
-  companyName: string;
-  numberNIP: string;
-  numberREGON: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  email: string;
-  phoneNumber: string;
-}
+import { logger } from '../utils/logger';
+import { isErrorWithMessage } from '../types/common';
+import { Receipt, Client, CompanyDetails } from '../types/receipt';
 
 interface ClientKPIs {
   totalQuantity: number;
@@ -97,6 +56,7 @@ const ClientDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   // Create sanitized search input handler
   const handleSearchChange = createSanitizedInputHandler(setSearchTerm, {
@@ -109,6 +69,9 @@ const ClientDetail: React.FC = () => {
     if (!user || !clientId) return;
 
     try {
+      setLoading(true);
+      setError(null);
+
       const clientDoc = await getDoc(doc(db, 'clients', clientId));
       if (clientDoc.exists()) {
         const clientData = { id: clientDoc.id, ...clientDoc.data() } as Client;
@@ -119,8 +82,20 @@ const ClientDetail: React.FC = () => {
         return;
       }
     } catch (error) {
+      logger.error(
+        'Błąd ładowania danych klienta',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'ClientDetail',
+          operation: 'fetchClient',
+          userId: user?.uid,
+          extra: { clientId },
+        }
+      );
       toast.error('Błąd ładowania danych klienta.');
       navigate('/clients');
+    } finally {
+      setLoading(false);
     }
   }, [user, clientId, navigate]);
 
@@ -147,11 +122,18 @@ const ClientDetail: React.FC = () => {
         });
       }
     } catch (error) {
+      logger.warn(
+        'Failed to fetch company details, using defaults',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'ClientDetail',
+          operation: 'fetchCompanyDetails',
+          userId: user.uid,
+        }
+      );
       // Fallback to default company details if fetch fails
     }
   }, [user]);
-
-  // Diagnostic function removed - temporary debugging code has been cleaned up
 
   // Fetch receipts for this client
   const fetchClientReceipts = useCallback(async () => {
@@ -160,15 +142,15 @@ const ClientDetail: React.FC = () => {
     setLoading(true);
     try {
       // Debug logging for development only
-      if (process.env.NODE_ENV === 'development') {
-        console.log(
-          '🔍 Fetching receipts for client:',
+      logger.debug('Fetching receipts for client', undefined, {
+        component: 'ClientDetail',
+        operation: 'fetchClientReceipts',
+        userId: user.uid,
+        extra: {
           clientId,
-          'user:',
-          user.uid
-        );
-        console.log('🌍 Environment:', process.env.REACT_APP_ENV || 'unknown');
-      }
+          environment: process.env.REACT_APP_ENV || 'unknown',
+        },
+      });
 
       const receiptsQuery = query(
         collection(db, 'receipts'),
@@ -184,9 +166,12 @@ const ClientDetail: React.FC = () => {
         date: doc.data().date.toDate(),
       })) as Receipt[];
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Found receipts for this client:', receiptsData.length);
-      }
+      logger.info('Found receipts for this client', {
+        component: 'ClientDetail',
+        operation: 'fetchClientReceipts',
+        userId: user.uid,
+        extra: { receiptCount: receiptsData.length },
+      });
 
       setReceipts(receiptsData);
 
@@ -205,34 +190,51 @@ const ClientDetail: React.FC = () => {
 
       setKPIs({ totalQuantity, totalAmount, receiptCount });
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Error fetching receipts for client:', error);
-        console.error('Error details:', {
-          clientId,
-          userID: user.uid,
-          errorMessage:
-            error instanceof Error ? error.message : 'Unknown error',
-          errorCode:
-            error && typeof error === 'object' && 'code' in error
-              ? (error as any).code
-              : 'no-code',
-        });
-      }
+      logger.error(
+        'Error fetching receipts for client',
+        isErrorWithMessage(error) ? error : undefined,
+        {
+          component: 'ClientDetail',
+          operation: 'fetchClientReceipts',
+          userId: user.uid,
+          extra: {
+            clientId,
+            errorMessage:
+              error instanceof Error ? error.message : 'Unknown error',
+            errorCode:
+              error && typeof error === 'object' && 'code' in error
+                ? (error as any).code
+                : 'no-code',
+          },
+        }
+      );
 
       // Check if it's a missing index error
       if (error instanceof Error && error.message.includes('index')) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error(
-            '🚨 This looks like a missing Firestore index error. The index may still be building.'
-          );
-        }
+        logger.warn(
+          'Missing Firestore index detected',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ClientDetail',
+            operation: 'fetchClientReceipts',
+            userId: user.uid,
+            extra: { clientId, indexError: true },
+          }
+        );
         toast.error(
           'Indeks bazy danych jest w trakcie budowania. Spróbuj ponownie za kilka minut.'
         );
       } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('💥 Unexpected error:', error);
-        }
+        logger.error(
+          'Unexpected error during receipt fetch',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'ClientDetail',
+            operation: 'fetchClientReceipts',
+            userId: user.uid,
+            extra: { clientId },
+          }
+        );
       }
 
       // Receipts list will remain empty if fetch fails
@@ -464,10 +466,104 @@ const ClientDetail: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-red-100">
+              <svg
+                className="w-6 h-6 text-red-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </div>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Błąd</h3>
+            <p className="mt-1 text-sm text-gray-500">{error}</p>
+            <div className="mt-6">
+              <Link
+                to="/clients"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                <svg
+                  className="mr-2 h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Powrót do listy klientów
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!client) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Klient nie został znaleziony.</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full mx-4">
+          <div className="text-center">
+            <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-gray-100">
+              <svg
+                className="w-6 h-6 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </div>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              Klient nie znaleziony
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Klient o podanym ID nie istnieje lub został usunięty.
+            </p>
+            <div className="mt-6">
+              <Link
+                to="/clients"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                <svg
+                  className="mr-2 h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Powrót do listy klientów
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

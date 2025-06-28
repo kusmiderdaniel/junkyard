@@ -1,7 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-
-const APP_VERSION = '2.25062025f';
+import versionData from '../version.json';
 
 const AppFooter: React.FC = () => {
   const { user } = useAuth();
@@ -17,7 +16,7 @@ const AppFooter: React.FC = () => {
           )}
         </div>
         <div>
-          Wersja: <span className="font-medium">{APP_VERSION}</span>
+          Wersja: <span className="font-medium">{versionData.current}</span>
         </div>
       </div>
     </footer>

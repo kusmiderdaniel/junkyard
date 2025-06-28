@@ -1,4 +1,7 @@
 import React, { useMemo } from 'react';
+import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
+import withErrorBoundary from '../withErrorBoundary';
 
 interface Product {
   id: string;
@@ -320,4 +323,19 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
   );
 };
 
-export default ProductsTable;
+export default withErrorBoundary(ProductsTable, {
+  context: 'Products Table',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'Products table error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'ProductsTable',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

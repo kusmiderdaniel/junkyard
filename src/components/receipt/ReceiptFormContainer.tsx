@@ -18,6 +18,9 @@ import ReceiptItemsList from './ReceiptItemsList';
 import ReceiptSummary from './ReceiptSummary';
 import ReceiptFormActions from './ReceiptFormActions';
 import LoadingSpinner from '../LoadingSpinner';
+import { logger } from '../../utils/logger';
+import { isErrorWithMessage } from '../../types/common';
+import withErrorBoundary from '../withErrorBoundary';
 
 const ReceiptFormContainer: React.FC = () => {
   const receiptFormHeaderRef = useRef<ReceiptFormHeaderRef>(null);
@@ -94,13 +97,28 @@ const ReceiptFormContainer: React.FC = () => {
         setIsInitialized(true);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error initializing component:', error);
+          logger.error(
+            'Error initializing receipt form component',
+            isErrorWithMessage(error) ? error : undefined,
+            {
+              component: 'ReceiptFormContainer',
+              operation: 'useEffect',
+              userId: user?.uid,
+            }
+          );
         }
       }
     };
 
     initializeComponent();
-  }, [fetchData, loadReceiptData, initializeItems, isEditing, isInitialized]);
+  }, [
+    fetchData,
+    loadReceiptData,
+    initializeItems,
+    isEditing,
+    isInitialized,
+    user?.uid,
+  ]);
 
   // Process items for saving: apply weight adjustment to quantity
   const processItemsForSaving = useCallback((items: any[]) => {
@@ -116,6 +134,7 @@ const ReceiptFormContainer: React.FC = () => {
           unit: item.unit,
           sell_price: item.sell_price,
           buy_price: item.buy_price,
+          weightAdjustment: item.weightAdjustment || 1, // Include weightAdjustment
           total_price: adjustedQuantity * item.buy_price, // Recalculate total with corrected quantity
         };
       });
@@ -603,4 +622,19 @@ const ReceiptFormContainer: React.FC = () => {
   );
 };
 
-export default ReceiptFormContainer;
+export default withErrorBoundary(ReceiptFormContainer, {
+  context: 'Receipt Form',
+  onError: (error, errorInfo) => {
+    logger.error(
+      'Receipt form error',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'ReceiptFormContainer',
+        operation: 'componentError',
+        extra: {
+          componentStack: errorInfo.componentStack,
+        },
+      }
+    );
+  },
+});

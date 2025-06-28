@@ -1,4 +1,4 @@
-import React, { useImperativeHandle, forwardRef, useRef } from 'react';
+import { useImperativeHandle, forwardRef, useRef } from 'react';
 import { ValidationErrors, Client } from '../../types/receipt';
 import ClientSelector from './ClientSelector';
 
@@ -28,7 +28,7 @@ const ReceiptFormHeader = forwardRef<
       selectedClient,
       validationErrors,
       showValidationErrors,
-      isEditing,
+      isEditing: _isEditing, // Renamed to indicate intentionally unused
       onDateChange,
       onClientSelect,
     },

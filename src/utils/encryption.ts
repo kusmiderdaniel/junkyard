@@ -3,6 +3,8 @@
  * Uses Web Crypto API with AES-GCM encryption
  */
 
+import { logger } from './logger';
+import { isErrorWithMessage } from '../types/common';
 // Generate a key from user's UID and a salt
 const generateKey = async (userUID: string): Promise<CryptoKey> => {
   const encoder = new TextEncoder();
@@ -31,7 +33,7 @@ const generateKey = async (userUID: string): Promise<CryptoKey> => {
 
 // Encrypt data
 export const encryptData = async (
-  data: any,
+  data: unknown,
   userUID: string
 ): Promise<string> => {
   try {
@@ -64,9 +66,14 @@ export const encryptData = async (
         .join('')
     );
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Encryption failed:', error);
-    }
+    logger.error(
+      'Encryption failed',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'Encryption',
+        operation: 'encryptData',
+      }
+    );
     // Fallback to unencrypted if encryption fails (for backward compatibility)
     return JSON.stringify(data);
   }
@@ -107,9 +114,14 @@ export const decryptData = async <T>(
     const decryptedStr = decoder.decode(decryptedData);
     return JSON.parse(decryptedStr);
   } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Decryption failed:', error);
-    }
+    logger.error(
+      'Decryption failed',
+      isErrorWithMessage(error) ? error : undefined,
+      {
+        component: 'Encryption',
+        operation: 'decryptData',
+      }
+    );
 
     // Try parsing as plain JSON (backward compatibility)
     try {
@@ -134,11 +146,14 @@ export const migrateUnencryptedData = async (
   userUID: string
 ): Promise<void> => {
   if (!isEncryptionAvailable()) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        'Web Crypto API not available, skipping encryption migration'
-      );
-    }
+    logger.warn(
+      'Web Crypto API not available, skipping encryption migration',
+      undefined,
+      {
+        component: 'Encryption',
+        operation: 'migrateUnencryptedData',
+      }
+    );
     return;
   }
 
@@ -162,9 +177,15 @@ export const migrateUnencryptedData = async (
         const encrypted = await encryptData(parsed, userUID);
         localStorage.setItem(key, encrypted);
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error(`Failed to migrate ${key}:`, error);
-        }
+        logger.error(
+          `Failed to migrate ${key}`,
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'Encryption',
+            operation: 'migrateUnencryptedData',
+            extra: { migrationKey: key },
+          }
+        );
       }
     }
   }

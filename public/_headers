@@ -1,0 +1,41 @@
+# Security Headers for Production Deployment
+
+/*
+  # Content Security Policy - Enhanced version
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.cloudfunctions.net wss://*.firebaseio.com https://cdnjs.cloudflare.com data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  
+  # Prevent XSS attacks
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  
+  # Referrer Policy
+  Referrer-Policy: strict-origin-when-cross-origin
+  
+  # Permissions Policy (formerly Feature Policy)
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), magnetometer=(), gyroscope=(), accelerometer=()
+  
+  # HSTS (HTTP Strict Transport Security)
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  
+  # Prevent MIME type sniffing
+  X-Download-Options: noopen
+  
+  # Cache Control for static assets
+  Cache-Control: public, max-age=31536000, immutable
+
+# Specific headers for service worker
+/service-worker.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  
+# Specific headers for HTML files
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  X-Frame-Options: DENY
+
+# API endpoints security (if any)
+/api/*
+  Access-Control-Allow-Origin: https://yourdomain.com
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization
+  Access-Control-Max-Age: 86400 
