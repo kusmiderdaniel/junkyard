@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { RateLimitedAuth } from '../utils/rateLimitedFirebase';
 import AuthDebug from './AuthDebug';
-
-const APP_VERSION = '2.01072025e';
+import versionData from '../version.json';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -103,7 +102,7 @@ const Login: React.FC = () => {
       <footer className="fixed bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-200 px-4 py-2">
         <div className="flex justify-center">
           <div className="text-xs text-gray-500">
-            Wersja: <span className="font-medium">{APP_VERSION}</span>
+            Wersja: <span className="font-medium">{versionData.current}</span>
           </div>
         </div>
       </footer>
