@@ -207,7 +207,7 @@ jobs:
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_PROD }}'
-          projectId: 'junkyard-prod'
+          projectId: 'junkyard-31ade'
           channelId: live
 
       - name: Log deployment success
