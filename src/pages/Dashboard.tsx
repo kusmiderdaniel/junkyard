@@ -255,6 +255,16 @@ const Dashboard: React.FC = () => {
     }).format(amount);
   };
 
+  const formatQuantity = (quantity: number) => {
+    return new Intl.NumberFormat('pl-PL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true,
+    })
+      .format(quantity)
+      .replace(/\u00A0/g, ' '); // Replace non-breaking space with regular space
+  };
+
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('pl-PL', {
       hour: '2-digit',
@@ -303,11 +313,7 @@ const Dashboard: React.FC = () => {
             Zebrano
           </h3>
           <p className="mt-2 text-3xl font-bold text-orange-700">
-            {totalQuantity.toLocaleString('pl-PL', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}{' '}
-            kg
+            {formatQuantity(totalQuantity)} kg
           </p>
         </div>
 
