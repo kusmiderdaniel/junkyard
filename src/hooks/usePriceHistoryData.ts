@@ -13,6 +13,10 @@ import {
   ProductOption,
   PriceChangeEvent,
 } from '../types/statistics';
+import {
+  ensurePriceDataToYesterday,
+  getCurrentProductPrices,
+} from '../utils/priceHistoryProcessor';
 
 interface UsePriceHistoryDataReturn {
   priceHistoryData: ChartDataPoint[];
@@ -108,53 +112,6 @@ export const usePriceHistoryData = (
     }
   }, [user, isOffline]);
 
-  // Generate sample data for demonstration
-  const generateSamplePriceHistory = useCallback(
-    (filters: PriceHistoryFilters): ChartDataPoint[] => {
-      const { start, end } = getDateRange();
-      const data: ChartDataPoint[] = [];
-      const daysDiff = Math.ceil(
-        (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      let currentBuyPrice = 10.0;
-      let currentSellPrice = 15.0;
-
-      for (
-        let i = 0;
-        i <= Math.min(daysDiff, 30);
-        i += Math.ceil(daysDiff / 15)
-      ) {
-        const date = new Date(start);
-        date.setDate(date.getDate() + i);
-
-        // Add some random price variation
-        currentBuyPrice += (Math.random() - 0.5) * 2;
-        currentSellPrice += (Math.random() - 0.5) * 3;
-
-        // Ensure prices don't go below reasonable values
-        currentBuyPrice = Math.max(5, currentBuyPrice);
-        currentSellPrice = Math.max(currentBuyPrice + 2, currentSellPrice);
-
-        data.push({
-          date: date.toISOString().split('T')[0],
-          buy_price:
-            filters.priceType === 'sell_price'
-              ? undefined
-              : Number(currentBuyPrice.toFixed(2)),
-          sell_price:
-            filters.priceType === 'buy_price'
-              ? undefined
-              : Number(currentSellPrice.toFixed(2)),
-          timestamp: date.getTime(),
-          formattedDate: date.toLocaleDateString('pl-PL'),
-        });
-      }
-
-      return data;
-    },
-    [getDateRange]
-  );
 
   // Fetch price history data
   const fetchPriceHistory = useCallback(async () => {
@@ -175,8 +132,6 @@ export const usePriceHistoryData = (
     setError(null);
 
     try {
-      // For now, we'll simulate price history data since the collection doesn't exist yet
-      // This will be replaced with actual Firestore queries once the Cloud Function is set up
 
       if (isOffline) {
         // In offline mode, we'll return empty data for now
@@ -194,7 +149,7 @@ export const usePriceHistoryData = (
         priceHistoryQuery = query(
           collection(db, 'priceHistory'),
           where('userID', '==', user.uid),
-          where('productId', '==', filters.selectedProductId.split('_')[1]) // Extract productId from the key
+          where('productId', '==', filters.selectedProductId.split('_')[1])
         );
       } else {
         // Query for itemCode
@@ -220,45 +175,45 @@ export const usePriceHistoryData = (
           timestamp: data.timestamp.toDate(),
           dateKey: data.dateKey,
           createdAt: data.createdAt.toDate(),
+          entryType: data.entryType,
         };
       });
 
-      // Group entries by date and create chart data for multiple products
-      const dataByDate = new Map<string, any>();
-
-      entries.forEach(entry => {
-        const dateKey = entry.dateKey;
-        if (!dataByDate.has(dateKey)) {
-          dataByDate.set(dateKey, {
-            date: dateKey,
-            timestamp: entry.timestamp.getTime(),
-            formattedDate: entry.timestamp.toLocaleDateString('pl-PL'),
-          });
-        }
-
-        const dayData = dataByDate.get(dateKey);
-        const productKey = `${entry.itemCode}_${entry.productId}`;
-
-        if (
-          filters.priceType === 'buy_price' ||
-          filters.priceType === 'sell_price'
-        ) {
-          const priceKey = `${filters.priceType}_${productKey}`;
-          dayData[priceKey] = entry[filters.priceType];
-          dayData[`${productKey}_name`] =
-            `${entry.itemCode} - ${entry.itemName}`;
+      // Get filtered products for fallback current prices
+      const relevantProducts = productOptions.filter(product => {
+        if (filters.selectedProductId && filters.selectedProductId !== '') {
+          return (
+            `${product.itemCode}_${product.productId}` ===
+            filters.selectedProductId
+          );
+        } else {
+          return product.itemCode === filters.selectedItemCode;
         }
       });
 
-      const chartData: ChartDataPoint[] = Array.from(dataByDate.values()).sort(
-        (a, b) => a.timestamp - b.timestamp
+      // Use the new utility to ensure continuous price data up to yesterday
+      const filledData = ensurePriceDataToYesterday(
+        entries,
+        relevantProducts,
+        filters.startDate,
+        filters.endDate,
+        filters.priceType
       );
+
+      setPriceHistoryData(filledData);
 
       // Generate colors and product info for chart
       const uniqueProducts = new Set<string>();
-      entries.forEach(entry => {
-        const productKey = `${entry.itemCode}_${entry.productId}`;
-        uniqueProducts.add(productKey);
+      filledData.forEach(dataPoint => {
+        Object.keys(dataPoint).forEach(key => {
+          if (
+            key.includes(`${filters.priceType}_`) &&
+            typeof dataPoint[key] === 'number'
+          ) {
+            const productKey = key.replace(`${filters.priceType}_`, '');
+            uniqueProducts.add(productKey);
+          }
+        });
       });
 
       const colors = [
@@ -275,46 +230,60 @@ export const usePriceHistoryData = (
       ];
 
       const products = Array.from(uniqueProducts).map((productKey, index) => {
-        const entry = entries.find(
-          e => `${e.itemCode}_${e.productId}` === productKey
+        const productData = relevantProducts.find(
+          p => `${p.itemCode}_${p.productId}` === productKey
         );
         return {
           productKey,
-          name: entry ? `${entry.itemCode} - ${entry.itemName}` : productKey,
+          name: productData
+            ? `${productData.itemCode} - ${productData.itemName}`
+            : productKey,
           color: colors[index % colors.length],
         };
       });
 
       setChartProducts(products);
 
-      // Calculate price changes
+      // Calculate price changes from original entries (not filled data)
       const changes: PriceChangeEvent[] = [];
-      for (let i = 1; i < entries.length; i++) {
-        const current = entries[i];
-        const previous = entries[i - 1];
+      const sortedEntries = [...entries].sort(
+        (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+      );
 
-        const buyChange =
-          ((current.buy_price - previous.buy_price) / previous.buy_price) * 100;
-        const sellChange =
-          ((current.sell_price - previous.sell_price) / previous.sell_price) *
-          100;
+      for (let i = 1; i < sortedEntries.length; i++) {
+        const current = sortedEntries[i];
+        const previous = sortedEntries[i - 1];
 
-        if (buyChange !== 0 || sellChange !== 0) {
-          changes.push({
-            date: current.dateKey,
-            oldBuyPrice: previous.buy_price,
-            newBuyPrice: current.buy_price,
-            oldSellPrice: previous.sell_price,
-            newSellPrice: current.sell_price,
-            changePercentage: {
-              buy: buyChange,
-              sell: sellChange,
-            },
-          });
+        if (current.productId === previous.productId) {
+          const buyChange =
+            previous.buy_price !== 0
+              ? ((current.buy_price - previous.buy_price) /
+                  previous.buy_price) *
+                100
+              : 0;
+          const sellChange =
+            previous.sell_price !== 0
+              ? ((current.sell_price - previous.sell_price) /
+                  previous.sell_price) *
+                100
+              : 0;
+
+          if (Math.abs(buyChange) > 0.01 || Math.abs(sellChange) > 0.01) {
+            changes.push({
+              date: current.dateKey,
+              oldBuyPrice: previous.buy_price,
+              newBuyPrice: current.buy_price,
+              oldSellPrice: previous.sell_price,
+              newSellPrice: current.sell_price,
+              changePercentage: {
+                buy: buyChange,
+                sell: sellChange,
+              },
+            });
+          }
         }
       }
 
-      setPriceHistoryData(chartData);
       setPriceChanges(changes);
     } catch (error) {
       logger.error(
@@ -328,20 +297,42 @@ export const usePriceHistoryData = (
         }
       );
 
-      // If collection doesn't exist yet, create sample data for demonstration
-      if (error instanceof Error && error.message.includes('collection')) {
-        const sampleData = generateSamplePriceHistory(filters);
-        setPriceHistoryData(sampleData);
-        setChartProducts([]);
-        setError('Brak danych historycznych. Wyświetlane są dane przykładowe.');
+      // If there's an error, try to show current prices as fallback
+      const relevantProducts = productOptions.filter(product => {
+        if (filters.selectedProductId && filters.selectedProductId !== '') {
+          return (
+            `${product.itemCode}_${product.productId}` ===
+            filters.selectedProductId
+          );
+        } else {
+          return product.itemCode === filters.selectedItemCode;
+        }
+      });
+
+      if (relevantProducts.length > 0) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        const fallbackData = getCurrentProductPrices(
+          relevantProducts,
+          yesterdayStr,
+          filters.priceType
+        );
+
+        setPriceHistoryData(fallbackData);
+        setError('Brak danych historycznych. Wyświetlana jest aktualna cena.');
       } else {
+        setPriceHistoryData([]);
         setError('Błąd podczas pobierania historii cen');
-        setChartProducts([]);
       }
+
+      setChartProducts([]);
+      setPriceChanges([]);
     } finally {
       setLoading(false);
     }
-  }, [user, filters, isOffline, generateSamplePriceHistory]);
+  }, [user, filters, isOffline, productOptions]);
 
   // Effect to fetch data when filters change
   useEffect(() => {

@@ -73,7 +73,7 @@ const Clients: React.FC = () => {
   // Create sanitized search input handler
   const handleSearchChange = createSanitizedInputHandler(setSearchTerm, {
     maxLength: 500,
-    preserveWhitespace: false,
+    preserveWhitespace: true,
   });
 
   const fetchReceiptCounts = useCallback(async () => {

@@ -81,6 +81,7 @@ export interface PriceHistoryEntry {
   timestamp: Date;
   dateKey: string; // Format: "2024-01-15" for efficient date queries
   createdAt: Date;
+  entryType?: 'initial' | 'change' | 'snapshot'; // Track entry type
 }
 
 export interface PriceHistoryFilters {
@@ -97,6 +98,12 @@ export interface ChartDataPoint {
   sell_price?: number;
   timestamp: number;
   formattedDate: string;
+}
+
+// Enhanced chart data point with metadata about data source
+export interface ProcessedChartDataPoint extends ChartDataPoint {
+  isFilled?: boolean; // Indicates if this data point was filled/interpolated
+  dataSource?: 'history' | 'current' | 'interpolated'; // Source of the data
 }
 
 export interface ProductOption {
