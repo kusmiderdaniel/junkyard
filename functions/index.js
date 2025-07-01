@@ -197,7 +197,6 @@ async function capturePricesForUser(userId) {
   return { processed, changed };
 }
 
-/**
  * Enhanced capture prices function that can optionally store daily snapshots
  * @param {string} userId - The user ID to process
  * @param {boolean} forceDailySnapshot - If true, store prices daily
@@ -339,7 +338,6 @@ async function capturePricesForUserEnhanced(
   return { processed, changed, snapshots };
 }
 
-/**
  * Populate Test Data Function (for development environment)
  * Generates realistic price history data for the past week
  */

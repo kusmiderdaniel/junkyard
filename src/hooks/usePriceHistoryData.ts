@@ -112,6 +112,7 @@ export const usePriceHistoryData = (
     }
   }, [user, isOffline]);
 
+
   // Fetch price history data
   const fetchPriceHistory = useCallback(async () => {
     // Only fetch if user exists AND either itemCode OR specific product is selected
@@ -131,6 +132,7 @@ export const usePriceHistoryData = (
     setError(null);
 
     try {
+
       if (isOffline) {
         // In offline mode, we'll return empty data for now
         setPriceHistoryData([]);
