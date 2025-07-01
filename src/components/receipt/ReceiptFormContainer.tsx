@@ -217,11 +217,12 @@ const ReceiptFormContainer: React.FC = () => {
 
     setSaving(true);
     try {
-      const localDate = new Date();
+      // Convert the selected date string (YYYY-MM-DD) to a Date object
+      const selectedDate = new Date(date);
 
       const receiptData = {
         number: receiptNumber,
-        date: localDate,
+        date: selectedDate,
         clientId: selectedClient!.id,
         userID: user.uid,
         totalAmount,
@@ -232,7 +233,7 @@ const ReceiptFormContainer: React.FC = () => {
         // Update existing receipt (only online)
         await updateDoc(doc(db, 'receipts', receiptId), {
           ...receiptData,
-          date: Timestamp.fromDate(localDate),
+          date: Timestamp.fromDate(selectedDate),
         });
 
         toast.success('Kwit został zaktualizowany.');
@@ -268,7 +269,7 @@ const ReceiptFormContainer: React.FC = () => {
 
           await addDoc(collection(db, 'receipts'), {
             ...receiptData,
-            date: Timestamp.fromDate(localDate),
+            date: Timestamp.fromDate(selectedDate),
           });
 
           toast.success('Kwit został zapisany.');
@@ -322,11 +323,12 @@ const ReceiptFormContainer: React.FC = () => {
 
       setPrintingAndContinuing(true);
       try {
-        const localDate = new Date();
+        // Convert the selected date string (YYYY-MM-DD) to a Date object
+        const selectedDate = new Date(date);
 
         const receiptData = {
           number: receiptNumber,
-          date: localDate,
+          date: selectedDate,
           clientId: selectedClient!.id,
           userID: user.uid,
           totalAmount,
@@ -346,7 +348,7 @@ const ReceiptFormContainer: React.FC = () => {
           savedReceipt = {
             id: tempId,
             ...receiptData,
-            date: localDate,
+            date: selectedDate,
           };
 
           toast.success(
@@ -370,13 +372,13 @@ const ReceiptFormContainer: React.FC = () => {
 
           const docRef = await addDoc(collection(db, 'receipts'), {
             ...receiptData,
-            date: Timestamp.fromDate(localDate),
+            date: Timestamp.fromDate(selectedDate),
           });
 
           savedReceipt = {
             id: docRef.id,
             ...receiptData,
-            date: localDate,
+            date: selectedDate,
           };
         }
 
