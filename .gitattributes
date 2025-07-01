@@ -1,0 +1,2 @@
+# Auto-resolve version conflicts - always use version.json from develop branch
+src/version.json merge=theirs 

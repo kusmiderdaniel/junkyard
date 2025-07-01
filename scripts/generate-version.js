@@ -111,8 +111,8 @@ function updateLoginVersion(version) {
 // Main execution
 function main() {
   const version = generateVersion();
-  updateAppFooterVersion(version);
-  updateLoginVersion(version);
+  // Note: AppFooter and Login now read version dynamically from version.json
+  // so we don't need to update them directly anymore
 
   console.log(`✅ Unified version ${version} generated successfully`);
 }
