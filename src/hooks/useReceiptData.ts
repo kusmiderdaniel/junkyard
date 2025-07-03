@@ -363,10 +363,13 @@ export const useReceiptData = ({
           });
         }
 
-        // Sort by date (newest first)
-        filteredReceipts.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
+        // Sort by date descending, then by receipt number descending
+        filteredReceipts.sort((a, b) => {
+          const dateCompare =
+            new Date(b.date).getTime() - new Date(a.date).getTime();
+          if (dateCompare !== 0) return dateCompare;
+          return b.number.localeCompare(a.number);
+        });
 
         // Apply pagination
         setTotalPages(Math.ceil(filteredReceipts.length / itemsPerPage));
@@ -504,6 +507,14 @@ export const useReceiptData = ({
             return itemsMatch;
           });
 
+          // Sort by date descending, then by receipt number descending
+          filteredReceipts.sort((a, b) => {
+            const dateCompare =
+              new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateCompare !== 0) return dateCompare;
+            return b.number.localeCompare(a.number);
+          });
+
           setTotalPages(Math.ceil(filteredReceipts.length / itemsPerPage));
           const start = (currentPage - 1) * itemsPerPage;
           const paginated = filteredReceipts.slice(start, start + itemsPerPage);
@@ -556,6 +567,14 @@ export const useReceiptData = ({
             ...doc.data(),
             date: doc.data().date.toDate(),
           })) as Receipt[];
+
+          // Sort by date descending, then by receipt number descending
+          fallbackReceipts.sort((a, b) => {
+            const dateCompare =
+              new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateCompare !== 0) return dateCompare;
+            return b.number.localeCompare(a.number);
+          });
 
           setReceipts(fallbackReceipts);
           setTotalPages(1);
@@ -634,6 +653,14 @@ export const useReceiptData = ({
         // Merge the receipts with existing cache to prevent duplicates
         await offlineStorage.mergeReceipts(receiptsData);
 
+        // Sort by date descending, then by receipt number descending on client side
+        receiptsData.sort((a, b) => {
+          const dateCompare =
+            new Date(b.date).getTime() - new Date(a.date).getTime();
+          if (dateCompare !== 0) return dateCompare;
+          return b.number.localeCompare(a.number);
+        });
+
         setReceipts(receiptsData);
 
         if (querySnapshot.docs.length > 0) {
@@ -654,6 +681,14 @@ export const useReceiptData = ({
         );
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
+          // Sort by date descending, then by receipt number descending
+          cachedReceipts.sort((a, b) => {
+            const dateCompare =
+              new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateCompare !== 0) return dateCompare;
+            return b.number.localeCompare(a.number);
+          });
+
           setReceipts(cachedReceipts.slice(0, itemsPerPage));
           setTotalPages(Math.ceil(cachedReceipts.length / itemsPerPage));
         } else {

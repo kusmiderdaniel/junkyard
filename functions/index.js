@@ -198,148 +198,6 @@ async function capturePricesForUser(userId) {
 }
 
 /**
- * Enhanced capture prices function that can optionally store daily snapshots
- * @param {string} userId - The user ID to process
- * @param {boolean} forceDailySnapshot - If true, store prices daily
- *                                      regardless of changes
- * @return {Promise<{processed: number, changed: number, snapshots: number}>}
- */
-async function capturePricesForUserEnhanced(
-  userId,
-  forceDailySnapshot = false
-) {
-  const today = new Date();
-  const dateKey = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-
-  // Get all products for this user
-  const productsSnapshot = await db
-    .collection('products')
-    .where('userID', '==', userId)
-    .get();
-
-  if (productsSnapshot.empty) {
-    logger.info(`No products found for user ${userId}`);
-    return { processed: 0, changed: 0, snapshots: 0 };
-  }
-
-  const batch = db.batch();
-  let processed = 0;
-  let changed = 0;
-  let snapshots = 0;
-
-  for (const productDoc of productsSnapshot.docs) {
-    const product = productDoc.data();
-    const productId = productDoc.id;
-
-    try {
-      // Check if we already have an entry for today
-      const todayEntrySnapshot = await db
-        .collection('priceHistory')
-        .where('userID', '==', userId)
-        .where('productId', '==', productId)
-        .where('dateKey', '==', dateKey)
-        .limit(1)
-        .get();
-
-      if (!todayEntrySnapshot.empty) {
-        // Already have an entry for today, skip
-        continue;
-      }
-
-      // Get the last price entry to check if prices changed
-      const lastEntrySnapshot = await db
-        .collection('priceHistory')
-        .where('userID', '==', userId)
-        .where('productId', '==', productId)
-        .orderBy('timestamp', 'desc')
-        .limit(1)
-        .get();
-
-      // Force save if daily snapshots are enabled
-      let shouldSaveEntry = forceDailySnapshot;
-
-      // Check if prices actually changed (only if not forcing daily snapshots)
-      if (!forceDailySnapshot && !lastEntrySnapshot.empty) {
-        const lastEntry = lastEntrySnapshot.docs[0].data();
-        if (
-          lastEntry.buy_price === product.buy_price &&
-          lastEntry.sell_price === product.sell_price
-        ) {
-          // Prices haven't changed, skip this entry unless forced
-          shouldSaveEntry = false;
-        } else {
-          // Prices changed
-          shouldSaveEntry = true;
-        }
-      } else if (!lastEntrySnapshot.empty) {
-        // We have previous data and forcing snapshots
-        const lastEntry = lastEntrySnapshot.docs[0].data();
-        if (
-          lastEntry.buy_price === product.buy_price &&
-          lastEntry.sell_price === product.sell_price
-        ) {
-          snapshots++; // Count as snapshot (same price)
-        } else {
-          changed++; // Count as change
-        }
-        shouldSaveEntry = true;
-      } else {
-        // No previous data, this is the first entry
-        shouldSaveEntry = true;
-        changed++;
-      }
-
-      if (shouldSaveEntry) {
-        // Create new price history entry
-        const priceHistoryEntry = {
-          userID: userId,
-          productId: productId,
-          itemCode: product.itemCode,
-          itemName: product.name,
-          buy_price: product.buy_price,
-          sell_price: product.sell_price,
-          timestamp: admin.firestore.Timestamp.now(),
-          dateKey: dateKey,
-          createdAt: admin.firestore.Timestamp.now(),
-          entryType: forceDailySnapshot
-            ? lastEntrySnapshot.empty
-              ? 'initial'
-              : lastEntrySnapshot.docs[0].data().buy_price ===
-                    product.buy_price &&
-                  lastEntrySnapshot.docs[0].data().sell_price ===
-                    product.sell_price
-                ? 'snapshot'
-                : 'change'
-            : 'change',
-        };
-
-        const docRef = db.collection('priceHistory').doc();
-        batch.set(docRef, priceHistoryEntry);
-
-        if (!forceDailySnapshot) {
-          changed++;
-        }
-      }
-
-      processed++;
-    } catch (error) {
-      logger.error(`Error processing product ${productId} for user ${userId}`, {
-        userId,
-        productId,
-        error: error.message,
-      });
-    }
-  }
-
-  // Commit the batch if we have changes
-  if (changed > 0 || snapshots > 0) {
-    await batch.commit();
-  }
-
-  return { processed, changed, snapshots };
-}
-
-/**
  * Populate Test Data Function (for development environment)
  * Generates realistic price history data for the past week
  */
@@ -406,7 +264,7 @@ exports.populateTestPriceHistory = onRequest(
       // Commit all entries
       await batch.commit();
 
-      logger.info(`Successfully created ${totalEntries} price history entries`);
+      logger.info(`Created ${totalEntries} price history entries`);
 
       response.json({
         success: true,
@@ -548,7 +406,7 @@ exports.clearTestPriceHistory = onRequest(
         await batch.commit();
       }
 
-      logger.info(`Successfully deleted ${deletedCount} price history entries`);
+      logger.info(`Deleted ${deletedCount} price history entries`);
 
       response.json({
         success: true,
@@ -636,53 +494,6 @@ exports.triggerPriceCapture = onRequest(
       }
     } catch (error) {
       logger.error('Manual price capture failed', {
-        error: error.message,
-        stack: error.stack,
-      });
-
-      response.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-);
-
-// Add a new Cloud Function to enable daily snapshots for specific users
-exports.enableDailyPriceSnapshots = onRequest(
-  {
-    memory: '256MiB',
-    timeoutSeconds: 60,
-  },
-  async (request, response) => {
-    try {
-      const userId = request.body?.userId;
-
-      if (!userId) {
-        response.status(400).json({
-          success: false,
-          error: 'userId is required',
-        });
-        return;
-      }
-
-      logger.info(
-        `Starting enhanced daily price capture for user ${userId}...`
-      );
-
-      const result = await capturePricesForUserEnhanced(userId, true);
-
-      logger.info(`Enhanced daily price capture completed for user ${userId}`, {
-        result,
-      });
-
-      response.json({
-        success: true,
-        message: `Successfully processed ${result.processed} products`,
-        ...result,
-      });
-    } catch (error) {
-      logger.error('Failed to capture daily price snapshots', {
         error: error.message,
         stack: error.stack,
       });
