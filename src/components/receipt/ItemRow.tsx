@@ -143,6 +143,20 @@ const ItemRow: React.FC<ItemRowProps> = ({
     setProductSearchTerm(item.itemName);
   }, [item.itemName]);
 
+  // Reset quantity edit state when item quantity changes (for form resets)
+  useEffect(() => {
+    if (item.quantity === 0) {
+      setQuantityEdit('');
+    }
+  }, [item.quantity]);
+
+  // Reset buy price edit state when item buy_price changes (for form resets)
+  useEffect(() => {
+    if (item.buy_price === 0) {
+      setBuyPriceEdit('');
+    }
+  }, [item.buy_price]);
+
   return (
     <tr className={hasErrors ? 'bg-red-50' : ''}>
       <td className="px-4 py-4">

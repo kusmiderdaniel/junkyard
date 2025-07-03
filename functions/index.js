@@ -406,7 +406,7 @@ exports.populateTestPriceHistory = onRequest(
       // Commit all entries
       await batch.commit();
 
-      logger.info(`Successfully created ${totalEntries} price history entries`);
+      logger.info(`Created ${totalEntries} price history entries`);
 
       response.json({
         success: true,
@@ -548,7 +548,7 @@ exports.clearTestPriceHistory = onRequest(
         await batch.commit();
       }
 
-      logger.info(`Successfully deleted ${deletedCount} price history entries`);
+      logger.info(`Deleted ${deletedCount} price history entries`);
 
       response.json({
         success: true,
@@ -636,53 +636,6 @@ exports.triggerPriceCapture = onRequest(
       }
     } catch (error) {
       logger.error('Manual price capture failed', {
-        error: error.message,
-        stack: error.stack,
-      });
-
-      response.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-);
-
-// Add a new Cloud Function to enable daily snapshots for specific users
-exports.enableDailyPriceSnapshots = onRequest(
-  {
-    memory: '256MiB',
-    timeoutSeconds: 60,
-  },
-  async (request, response) => {
-    try {
-      const userId = request.body?.userId;
-
-      if (!userId) {
-        response.status(400).json({
-          success: false,
-          error: 'userId is required',
-        });
-        return;
-      }
-
-      logger.info(
-        `Starting enhanced daily price capture for user ${userId}...`
-      );
-
-      const result = await capturePricesForUserEnhanced(userId, true);
-
-      logger.info(`Enhanced daily price capture completed for user ${userId}`, {
-        result,
-      });
-
-      response.json({
-        success: true,
-        message: `Successfully processed ${result.processed} products`,
-        ...result,
-      });
-    } catch (error) {
-      logger.error('Failed to capture daily price snapshots', {
         error: error.message,
         stack: error.stack,
       });
