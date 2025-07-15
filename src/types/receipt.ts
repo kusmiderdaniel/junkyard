@@ -77,6 +77,7 @@ export interface ValidationErrors {
   client: string;
   items: string;
   date: string;
+  receiptNumber: string;
 }
 
 export interface ReceiptFormData {

@@ -21,6 +21,7 @@ import LoadingSpinner from '../LoadingSpinner';
 import { logger } from '../../utils/logger';
 import { isErrorWithMessage } from '../../types/common';
 import withErrorBoundary from '../withErrorBoundary';
+import { validateReceiptFormAsync } from '../../utils/receiptFormValidator';
 
 const ReceiptFormContainer: React.FC = () => {
   const receiptFormHeaderRef = useRef<ReceiptFormHeaderRef>(null);
@@ -51,6 +52,8 @@ const ReceiptFormContainer: React.FC = () => {
     // Actions
     handleDateChange,
     handleClientSelect,
+    handleReceiptNumberChange,
+    handleReceiptNumberBlur,
     addNewItem,
     removeItem,
     handleProductSelect,
@@ -74,7 +77,7 @@ const ReceiptFormContainer: React.FC = () => {
     user,
     addOfflineReceipt,
     viewPDF,
-    validateReceiptForm,
+    checkDuplicateReceiptNumber,
     generateReceiptNumber,
   } = useReceiptForm();
 
@@ -192,8 +195,20 @@ const ReceiptFormContainer: React.FC = () => {
 
     setShowValidationErrors(true);
 
-    const { isValid } = validateReceiptForm(selectedClient, date, items);
-    if (!isValid) {
+    // Use async validation that includes duplicate checking
+    const validation = await validateReceiptFormAsync(
+      selectedClient,
+      date,
+      items,
+      receiptNumber,
+      checkDuplicateReceiptNumber
+    );
+
+    if (!validation.isValid) {
+      // Focus on the receipt number field if there's a receipt number error
+      if (validation.errors.receiptNumber) {
+        receiptFormHeaderRef.current?.focusReceiptNumber();
+      }
       return;
     }
 
@@ -252,21 +267,7 @@ const ReceiptFormContainer: React.FC = () => {
             toast.error('Nie udało się dodać kwitu offline.');
           }
         } else {
-          // Check for duplicates before creating
-          const duplicateCheckQuery = query(
-            collection(db, 'receipts'),
-            where('userID', '==', user.uid),
-            where('number', '==', receiptNumber)
-          );
-
-          const duplicateSnapshot = await getDocs(duplicateCheckQuery);
-
-          if (!duplicateSnapshot.empty) {
-            const newReceiptNumber = await generateReceiptNumber(date);
-            setReceiptNumber(newReceiptNumber);
-            receiptData.number = newReceiptNumber;
-          }
-
+          // We already checked for duplicates in validation, so proceed directly
           await addDoc(collection(db, 'receipts'), {
             ...receiptData,
             date: Timestamp.fromDate(selectedDate),
@@ -291,8 +292,20 @@ const ReceiptFormContainer: React.FC = () => {
 
       setShowValidationErrors(true);
 
-      const { isValid } = validateReceiptForm(selectedClient, date, items);
-      if (!isValid) {
+      // Use async validation that includes duplicate checking
+      const validation = await validateReceiptFormAsync(
+        selectedClient,
+        date,
+        items,
+        receiptNumber,
+        checkDuplicateReceiptNumber
+      );
+
+      if (!validation.isValid) {
+        // Focus on the receipt number field if there's a receipt number error
+        if (validation.errors.receiptNumber) {
+          receiptFormHeaderRef.current?.focusReceiptNumber();
+        }
         return;
       }
 
@@ -411,7 +424,6 @@ const ReceiptFormContainer: React.FC = () => {
     },
     [
       user,
-      validateReceiptForm,
       companyDetails,
       receiptNumber,
       selectedClient,
@@ -428,6 +440,7 @@ const ReceiptFormContainer: React.FC = () => {
       setReceiptNumber,
       rateLimitedOps,
       processItemsForSaving,
+      checkDuplicateReceiptNumber,
     ]
   );
 
@@ -437,8 +450,20 @@ const ReceiptFormContainer: React.FC = () => {
 
     setShowValidationErrors(true);
 
-    const { isValid } = validateReceiptForm(selectedClient, date, items);
-    if (!isValid) {
+    // Use async validation that includes duplicate checking
+    const validation = await validateReceiptFormAsync(
+      selectedClient,
+      date,
+      items,
+      receiptNumber,
+      checkDuplicateReceiptNumber
+    );
+
+    if (!validation.isValid) {
+      // Focus on the receipt number field if there's a receipt number error
+      if (validation.errors.receiptNumber) {
+        receiptFormHeaderRef.current?.focusReceiptNumber();
+      }
       return;
     }
 
@@ -468,7 +493,6 @@ const ReceiptFormContainer: React.FC = () => {
   }, [
     user,
     isEditing,
-    validateReceiptForm,
     companyDetails,
     receiptId,
     receiptNumber,
@@ -480,6 +504,7 @@ const ReceiptFormContainer: React.FC = () => {
     setShowValidationErrors,
     setPrintingAndContinuing,
     processItemsForSaving,
+    checkDuplicateReceiptNumber,
   ]);
 
   // Keyboard shortcut for print (Cmd/Ctrl + D)
@@ -544,44 +569,50 @@ const ReceiptFormContainer: React.FC = () => {
       </div>
 
       {/* Validation Summary */}
-      {showValidationErrors &&
+      {(showValidationErrors &&
         (validationErrors.client ||
           validationErrors.items ||
-          validationErrors.date) && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Proszę poprawić następujące błędy:
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <ul className="list-disc pl-5 space-y-1">
-                    {validationErrors.client && (
-                      <li>{validationErrors.client}</li>
-                    )}
-                    {validationErrors.date && <li>{validationErrors.date}</li>}
-                    {validationErrors.items && (
-                      <li>{validationErrors.items}</li>
-                    )}
-                  </ul>
-                </div>
+          validationErrors.date)) ||
+      validationErrors.receiptNumber ? (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-red-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Proszę poprawić następujące błędy:
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <ul className="list-disc pl-5 space-y-1">
+                  {validationErrors.receiptNumber && (
+                    <li>{validationErrors.receiptNumber}</li>
+                  )}
+                  {showValidationErrors && validationErrors.client && (
+                    <li>{validationErrors.client}</li>
+                  )}
+                  {showValidationErrors && validationErrors.date && (
+                    <li>{validationErrors.date}</li>
+                  )}
+                  {showValidationErrors && validationErrors.items && (
+                    <li>{validationErrors.items}</li>
+                  )}
+                </ul>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      ) : null}
 
       <div className="space-y-6">
         <ReceiptFormHeader
@@ -594,6 +625,8 @@ const ReceiptFormContainer: React.FC = () => {
           isEditing={isEditing}
           onDateChange={handleDateChange}
           onClientSelect={handleClientSelect}
+          onReceiptNumberChange={handleReceiptNumberChange}
+          onReceiptNumberBlur={handleReceiptNumberBlur}
         />
 
         <ReceiptItemsList

@@ -11,10 +11,13 @@ interface ReceiptFormHeaderProps {
   isEditing: boolean;
   onDateChange: (date: string) => void;
   onClientSelect: (client: Client) => void;
+  onReceiptNumberChange: (receiptNumber: string) => void;
+  onReceiptNumberBlur: () => void;
 }
 
 export interface ReceiptFormHeaderRef {
   focusClientSelector: () => void;
+  focusReceiptNumber: () => void;
 }
 
 const ReceiptFormHeader = forwardRef<
@@ -31,16 +34,39 @@ const ReceiptFormHeader = forwardRef<
       isEditing: _isEditing, // Renamed to indicate intentionally unused
       onDateChange,
       onClientSelect,
+      onReceiptNumberChange,
+      onReceiptNumberBlur,
     },
     ref
   ) => {
     const clientSelectorRef = useRef<{ focus: () => void }>(null);
+    const receiptNumberRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({
       focusClientSelector: () => {
         clientSelectorRef.current?.focus();
       },
+      focusReceiptNumber: () => {
+        receiptNumberRef.current?.focus();
+        receiptNumberRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      },
     }));
+
+    // Check if the selected date is today
+    const isToday = (() => {
+      const today = new Date();
+      const selectedDate = new Date(date);
+      return (
+        selectedDate.getFullYear() === today.getFullYear() &&
+        selectedDate.getMonth() === today.getMonth() &&
+        selectedDate.getDate() === today.getDate()
+      );
+    })();
+
+    const canEditReceiptNumber = !isToday;
 
     return (
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -51,13 +77,41 @@ const ReceiptFormHeader = forwardRef<
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Numer Kwitu
+              {canEditReceiptNumber && (
+                <span className="text-xs text-orange-600 ml-1">
+                  (edytowalny)
+                </span>
+              )}
             </label>
             <input
+              ref={receiptNumberRef}
               type="text"
               value={receiptNumber}
-              readOnly
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+              onChange={e => onReceiptNumberChange(e.target.value)}
+              onBlur={onReceiptNumberBlur}
+              readOnly={!canEditReceiptNumber}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                validationErrors.receiptNumber
+                  ? 'border-red-300 focus:ring-red-500'
+                  : canEditReceiptNumber
+                    ? 'border-gray-300 bg-white text-gray-900 focus:ring-orange-600'
+                    : 'border-gray-300 bg-gray-50 text-gray-600'
+              }`}
+              placeholder={
+                canEditReceiptNumber ? 'Wprowadź numer kwitu...' : ''
+              }
             />
+            {validationErrors.receiptNumber && (
+              <p className="mt-1 text-sm text-red-600">
+                {validationErrors.receiptNumber}
+              </p>
+            )}
+            {canEditReceiptNumber && !validationErrors.receiptNumber && (
+              <p className="mt-1 text-xs text-gray-500">
+                Możesz ręcznie edytować numer kwitu, gdy data nie jest
+                dzisiejsza
+              </p>
+            )}
           </div>
 
           {/* Date */}

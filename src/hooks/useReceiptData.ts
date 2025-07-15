@@ -18,6 +18,7 @@ import { normalizePolishText } from '../utils/textUtils';
 import { useOfflineStatus } from './useOfflineStatus';
 import { offlineStorage } from '../utils/offlineStorage';
 import { syncService } from '../utils/syncService';
+import { sortReceiptsInPlace } from '../utils/receiptSorting';
 import {
   Receipt,
   Client,
@@ -364,12 +365,7 @@ export const useReceiptData = ({
         }
 
         // Sort by date descending, then by receipt number descending
-        filteredReceipts.sort((a, b) => {
-          const dateCompare =
-            new Date(b.date).getTime() - new Date(a.date).getTime();
-          if (dateCompare !== 0) return dateCompare;
-          return b.number.localeCompare(a.number);
-        });
+        sortReceiptsInPlace(filteredReceipts);
 
         // Apply pagination
         setTotalPages(Math.ceil(filteredReceipts.length / itemsPerPage));
@@ -508,12 +504,7 @@ export const useReceiptData = ({
           });
 
           // Sort by date descending, then by receipt number descending
-          filteredReceipts.sort((a, b) => {
-            const dateCompare =
-              new Date(b.date).getTime() - new Date(a.date).getTime();
-            if (dateCompare !== 0) return dateCompare;
-            return b.number.localeCompare(a.number);
-          });
+          sortReceiptsInPlace(filteredReceipts);
 
           setTotalPages(Math.ceil(filteredReceipts.length / itemsPerPage));
           const start = (currentPage - 1) * itemsPerPage;
@@ -569,12 +560,7 @@ export const useReceiptData = ({
           })) as Receipt[];
 
           // Sort by date descending, then by receipt number descending
-          fallbackReceipts.sort((a, b) => {
-            const dateCompare =
-              new Date(b.date).getTime() - new Date(a.date).getTime();
-            if (dateCompare !== 0) return dateCompare;
-            return b.number.localeCompare(a.number);
-          });
+          sortReceiptsInPlace(fallbackReceipts);
 
           setReceipts(fallbackReceipts);
           setTotalPages(1);
@@ -654,12 +640,7 @@ export const useReceiptData = ({
         await offlineStorage.mergeReceipts(receiptsData);
 
         // Sort by date descending, then by receipt number descending on client side
-        receiptsData.sort((a, b) => {
-          const dateCompare =
-            new Date(b.date).getTime() - new Date(a.date).getTime();
-          if (dateCompare !== 0) return dateCompare;
-          return b.number.localeCompare(a.number);
-        });
+        sortReceiptsInPlace(receiptsData);
 
         setReceipts(receiptsData);
 
@@ -682,12 +663,7 @@ export const useReceiptData = ({
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
           // Sort by date descending, then by receipt number descending
-          cachedReceipts.sort((a, b) => {
-            const dateCompare =
-              new Date(b.date).getTime() - new Date(a.date).getTime();
-            if (dateCompare !== 0) return dateCompare;
-            return b.number.localeCompare(a.number);
-          });
+          sortReceiptsInPlace(cachedReceipts);
 
           setReceipts(cachedReceipts.slice(0, itemsPerPage));
           setTotalPages(Math.ceil(cachedReceipts.length / itemsPerPage));

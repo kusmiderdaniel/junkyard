@@ -9,6 +9,7 @@ export const validateReceiptForm = (
     client: '',
     items: '',
     date: '',
+    receiptNumber: '',
   };
 
   // Validate client selection
@@ -46,7 +47,47 @@ export const validateReceiptForm = (
     }
   }
 
-  const isValid = !errors.client && !errors.items && !errors.date;
+  const isValid =
+    !errors.client && !errors.items && !errors.date && !errors.receiptNumber;
 
   return { isValid, errors };
+};
+
+// Async version that includes duplicate receipt number checking
+export const validateReceiptFormAsync = async (
+  selectedClient: Client | null,
+  date: string,
+  items: ReceiptItem[],
+  receiptNumber: string,
+  checkDuplicateReceiptNumber: (receiptNumber: string) => Promise<boolean>
+): Promise<{ isValid: boolean; errors: ValidationErrors }> => {
+  // First run basic validation
+  const basicValidation = validateReceiptForm(selectedClient, date, items);
+
+  // If basic validation failed, return early
+  if (!basicValidation.isValid) {
+    return basicValidation;
+  }
+
+  // Check for duplicate receipt number
+  if (!receiptNumber.trim()) {
+    basicValidation.errors.receiptNumber = 'Numer kwitu jest wymagany';
+    basicValidation.isValid = false;
+  } else {
+    const isDuplicate = await checkDuplicateReceiptNumber(receiptNumber);
+    if (isDuplicate) {
+      basicValidation.errors.receiptNumber =
+        'Ten numer kwitu już istnieje. Proszę wybrać inny numer.';
+      basicValidation.isValid = false;
+    }
+  }
+
+  return {
+    isValid:
+      !basicValidation.errors.client &&
+      !basicValidation.errors.items &&
+      !basicValidation.errors.date &&
+      !basicValidation.errors.receiptNumber,
+    errors: basicValidation.errors,
+  };
 };
