@@ -364,7 +364,7 @@ export const useReceiptData = ({
           });
         }
 
-        // Sort by date descending, then by receipt number descending
+        // Sort by by receipt number descending
         sortReceiptsInPlace(filteredReceipts);
 
         // Apply pagination
@@ -503,7 +503,7 @@ export const useReceiptData = ({
             return itemsMatch;
           });
 
-          // Sort by date descending, then by receipt number descending
+          // Sort by receipt number descending
           sortReceiptsInPlace(filteredReceipts);
 
           setTotalPages(Math.ceil(filteredReceipts.length / itemsPerPage));
@@ -559,7 +559,7 @@ export const useReceiptData = ({
             date: doc.data().date.toDate(),
           })) as Receipt[];
 
-          // Sort by date descending, then by receipt number descending
+          // Sort by receipt number descending
           sortReceiptsInPlace(fallbackReceipts);
 
           setReceipts(fallbackReceipts);
@@ -639,7 +639,7 @@ export const useReceiptData = ({
         // Merge the receipts with existing cache to prevent duplicates
         await offlineStorage.mergeReceipts(receiptsData);
 
-        // Sort by date descending, then by receipt number descending on client side
+        // Sort by receipt number descending on client side
         sortReceiptsInPlace(receiptsData);
 
         setReceipts(receiptsData);
@@ -662,7 +662,7 @@ export const useReceiptData = ({
         );
         const cachedReceipts = await offlineStorage.getCachedReceipts();
         if (cachedReceipts.length > 0) {
-          // Sort by date descending, then by receipt number descending
+          // Sort by receipt number descending
           sortReceiptsInPlace(cachedReceipts);
 
           setReceipts(cachedReceipts.slice(0, itemsPerPage));
