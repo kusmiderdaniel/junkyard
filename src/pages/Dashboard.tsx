@@ -9,11 +9,12 @@ import {
   doc,
   getDoc,
 } from 'firebase/firestore';
-import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { usePDFReceipt } from '../components/PDFReceipt';
 import { Receipt, Client, CompanyDetails } from '../types/receipt';
+import { sortReceiptsInPlace } from '../utils/receiptSorting';
+import { usePDFReceipt } from '../components/PDFReceipt';
+import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -143,7 +144,7 @@ const Dashboard: React.FC = () => {
       })) as Receipt[];
 
       // Sort by date descending (newest first)
-      receiptsData.sort((a, b) => b.date.getTime() - a.date.getTime());
+      sortReceiptsInPlace(receiptsData);
 
       setTodaysReceipts(receiptsData);
     } catch (error) {

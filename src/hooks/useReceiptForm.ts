@@ -41,6 +41,8 @@ export const useReceiptForm = () => {
 
   // Form state
   const [receiptNumber, setReceiptNumber] = useState('');
+  const [isReceiptNumberManuallyEdited, setIsReceiptNumberManuallyEdited] =
+    useState(false);
   const [date, setDate] = useState(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -66,8 +68,145 @@ export const useReceiptForm = () => {
     client: '',
     items: '',
     date: '',
+    receiptNumber: '',
   });
   const [showValidationErrors, setShowValidationErrors] = useState(false);
+
+  // Helper function to check if date is today
+  const isDateToday = useCallback((dateString: string) => {
+    const today = new Date();
+    const selectedDate = new Date(dateString);
+    return (
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()
+    );
+  }, []);
+
+  // Check for duplicate receipt numbers
+  const checkDuplicateReceiptNumber = useCallback(
+    async (receiptNumber: string): Promise<boolean> => {
+      if (!user || !receiptNumber.trim()) return false;
+
+      try {
+        // Check online receipts first (if online)
+        if (!isOffline) {
+          try {
+            const duplicateCheckQuery = query(
+              collection(db, 'receipts'),
+              where('userID', '==', user.uid),
+              where('number', '==', receiptNumber)
+            );
+
+            const duplicateSnapshot = await getDocs(duplicateCheckQuery);
+
+            // If editing, exclude the current receipt from duplicate check
+            const duplicates = isEditing
+              ? duplicateSnapshot.docs.filter(doc => doc.id !== receiptId)
+              : duplicateSnapshot.docs;
+
+            if (duplicates.length > 0) {
+              return true;
+            }
+          } catch (error) {
+            logger.warn(
+              'Failed to check online receipts for duplicates, checking cached data only',
+              isErrorWithMessage(error) ? error : undefined,
+              {
+                component: 'useReceiptForm',
+                operation: 'checkDuplicateReceiptNumber',
+              }
+            );
+          }
+        }
+
+        // Always check cached receipts (both online cached and offline created)
+        const cachedReceipts = await offlineStorage.getCachedReceipts();
+        const pendingOperations = await offlineStorage.getPendingOperations();
+
+        // Check cached receipts from Firebase
+        const cachedDuplicate = cachedReceipts.some(receipt => {
+          // If editing, exclude the current receipt from duplicate check
+          if (isEditing && receipt.id === receiptId) return false;
+          return receipt.number === receiptNumber;
+        });
+
+        if (cachedDuplicate) {
+          return true;
+        }
+
+        // Check pending offline receipts
+        const pendingDuplicate = pendingOperations
+          .filter(op => op.type === 'CREATE_RECEIPT')
+          .some(operation => {
+            const receiptData = operation.data as any;
+            return receiptData && receiptData.number === receiptNumber;
+          });
+
+        return pendingDuplicate;
+      } catch (error) {
+        logger.error(
+          'Error checking for duplicate receipt numbers',
+          isErrorWithMessage(error) ? error : undefined,
+          {
+            component: 'useReceiptForm',
+            operation: 'checkDuplicateReceiptNumber',
+            userId: user.uid,
+          }
+        );
+        return false;
+      }
+    },
+    [user, isOffline, isEditing, receiptId]
+  );
+
+  // Debounced receipt number validation - runs immediately, not just after form submission
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (receiptNumber.trim()) {
+        const isDuplicate = await checkDuplicateReceiptNumber(receiptNumber);
+        if (isDuplicate) {
+          setValidationErrors(prev => ({
+            ...prev,
+            receiptNumber:
+              'Ten numer kwitu już istnieje. Proszę wybrać inny numer.',
+          }));
+        } else {
+          setValidationErrors(prev => ({
+            ...prev,
+            receiptNumber: '',
+          }));
+        }
+      } else {
+        // Clear receipt number error if field is empty
+        setValidationErrors(prev => ({
+          ...prev,
+          receiptNumber: '',
+        }));
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [receiptNumber, checkDuplicateReceiptNumber]);
+
+  // Immediate validation on receipt number blur (for instant feedback)
+  const handleReceiptNumberBlur = useCallback(async () => {
+    if (receiptNumber.trim()) {
+      const isDuplicate = await checkDuplicateReceiptNumber(receiptNumber);
+      if (isDuplicate) {
+        setValidationErrors(prev => ({
+          ...prev,
+          receiptNumber:
+            'Ten numer kwitu już istnieje. Proszę wybrać inny numer.',
+        }));
+      } else {
+        setValidationErrors(prev => ({
+          ...prev,
+          receiptNumber: '',
+        }));
+      }
+    }
+  }, [receiptNumber, checkDuplicateReceiptNumber]);
 
   // Initialize empty items
   const initializeItems = useCallback(() => {
@@ -93,18 +232,64 @@ export const useReceiptForm = () => {
     setTotalAmount(total);
   }, [items]);
 
-  // Generate receipt number when date changes (only for new receipts)
+  // Generate receipt number when date changes (only for new receipts and if not manually edited)
   useEffect(() => {
-    if (user && date && !isEditing) {
+    if (user && date && !isEditing && !isReceiptNumberManuallyEdited) {
       generateReceiptNumber(date, user.uid, isOffline).then(setReceiptNumber);
     }
-  }, [user, date, isEditing, isOffline]);
+  }, [user, date, isEditing, isOffline, isReceiptNumberManuallyEdited]);
+
+  // Reset manual editing flag when date changes to today
+  useEffect(() => {
+    if (isDateToday(date)) {
+      setIsReceiptNumberManuallyEdited(false);
+      // Clear receipt number validation errors when switching to today (auto-generation)
+      setValidationErrors(prev => ({
+        ...prev,
+        receiptNumber: '',
+      }));
+    }
+  }, [date, isDateToday]);
+
+  // Immediate validation when date or receipt number changes and user is manually editing
+  useEffect(() => {
+    const validateImmediately = async () => {
+      if (receiptNumber.trim() && isReceiptNumberManuallyEdited) {
+        const isDuplicate = await checkDuplicateReceiptNumber(receiptNumber);
+        if (isDuplicate) {
+          setValidationErrors(prev => ({
+            ...prev,
+            receiptNumber:
+              'Ten numer kwitu już istnieje. Proszę wybrać inny numer.',
+          }));
+        } else {
+          setValidationErrors(prev => ({
+            ...prev,
+            receiptNumber: '',
+          }));
+        }
+      }
+    };
+
+    validateImmediately();
+  }, [
+    date,
+    receiptNumber,
+    isReceiptNumberManuallyEdited,
+    checkDuplicateReceiptNumber,
+  ]);
 
   // Validation effect
   useEffect(() => {
     if (showValidationErrors) {
       const { errors } = validateReceiptForm(selectedClient, date, items);
-      setValidationErrors(errors);
+      setValidationErrors(prev => ({
+        ...prev,
+        client: errors.client,
+        items: errors.items,
+        date: errors.date,
+        // Keep existing receiptNumber error if any (will be handled by debounced effect)
+      }));
     }
   }, [selectedClient, date, items, showValidationErrors]);
 
@@ -377,6 +562,17 @@ export const useReceiptForm = () => {
     setSelectedClient(client);
   }, []);
 
+  const handleReceiptNumberChange = useCallback(
+    (newReceiptNumber: string) => {
+      setReceiptNumber(newReceiptNumber);
+      // Mark as manually edited only if the date is not today
+      if (!isDateToday(date)) {
+        setIsReceiptNumberManuallyEdited(true);
+      }
+    },
+    [date, isDateToday]
+  );
+
   return {
     // State
     receiptNumber,
@@ -398,11 +594,13 @@ export const useReceiptForm = () => {
     // Actions
     handleDateChange,
     handleClientSelect,
+    handleReceiptNumberChange,
     addNewItem,
     removeItem,
     handleProductSelect,
     handleQuantityChange,
     handleBuyPriceChange,
+    handleReceiptNumberBlur,
 
     // State setters for form operations
     setSaving,
@@ -422,6 +620,7 @@ export const useReceiptForm = () => {
     addOfflineReceipt,
     viewPDF,
     validateReceiptForm,
+    checkDuplicateReceiptNumber,
     generateReceiptNumber: (date: string) =>
       generateReceiptNumber(date, user?.uid || '', isOffline),
   };

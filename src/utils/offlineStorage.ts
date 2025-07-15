@@ -8,6 +8,7 @@ import {
 import { encryptData, decryptData, isEncryptionAvailable } from './encryption';
 import { getCurrentUserId } from '../firebase';
 import { logger } from './logger';
+import { sortReceiptsInPlace } from './receiptSorting';
 import { SyncableEntity } from '../types/common';
 
 // Types for offline operations queue
@@ -138,9 +139,8 @@ export const offlineStorage = {
     );
 
     // Only cache recent receipts to avoid storage bloat
-    const recentReceipts = deduplicatedReceipts
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 100); // Cache only the 100 most recent receipts
+    sortReceiptsInPlace(deduplicatedReceipts);
+    const recentReceipts = deduplicatedReceipts.slice(0, 100); // Cache only the 100 most recent receipts
 
     await secureStorage.setItem(STORAGE_KEYS.RECEIPTS, recentReceipts);
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, Date.now().toString());
