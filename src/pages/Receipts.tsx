@@ -11,7 +11,7 @@ import DeleteReceiptModal from '../components/receipts/DeleteReceiptModal';
 import ReceiptPagination from '../components/receipts/ReceiptPagination';
 import { useReceiptData } from '../hooks/useReceiptData';
 import { useReceiptExportActions } from '../components/receipts/ReceiptExportActions';
-import { Receipt, DeleteReceiptData, PageSnapshots } from '../types/receipt';
+import { Receipt, DeleteReceiptData } from '../types/receipt';
 
 const Receipts: React.FC = () => {
   const { user } = useAuth();
@@ -21,9 +21,7 @@ const Receipts: React.FC = () => {
   // Local state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [pageSnapshots, setPageSnapshots] = useState<PageSnapshots>({
-    1: null,
-  });
+
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearchTerm, setActiveSearchTerm] = useState('');
@@ -44,7 +42,6 @@ const Receipts: React.FC = () => {
     loading,
     totalPages,
     availableMonths,
-    lastVisible,
     fetchReceipts,
     fetchClients,
     fetchCompanyDetails,
@@ -54,7 +51,6 @@ const Receipts: React.FC = () => {
     user,
     currentPage,
     itemsPerPage,
-    pageSnapshots,
     selectedMonth,
     activeSearchTerm,
   });
@@ -96,14 +92,12 @@ const Receipts: React.FC = () => {
   const handleSearch = () => {
     setActiveSearchTerm(searchTerm);
     setCurrentPage(1);
-    setPageSnapshots({ 1: null });
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
     setActiveSearchTerm('');
     setCurrentPage(1);
-    setPageSnapshots({ 1: null });
   };
 
   // PDF handlers
@@ -141,16 +135,12 @@ const Receipts: React.FC = () => {
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      if (page > currentPage && lastVisible) {
-        setPageSnapshots(prev => ({ ...prev, [page]: lastVisible }));
-      }
     }
   };
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
-    setPageSnapshots({ 1: null });
   };
 
   // Row expansion
