@@ -5,10 +5,8 @@ import {
   getDocs,
   query,
   limit,
-  startAfter,
   DocumentData,
   QueryDocumentSnapshot,
-  getCountFromServer,
   orderBy,
   where,
   doc,
@@ -19,19 +17,13 @@ import { useOfflineStatus } from './useOfflineStatus';
 import { offlineStorage } from '../utils/offlineStorage';
 import { syncService } from '../utils/syncService';
 import { sortReceiptsInPlace } from '../utils/receiptSorting';
-import {
-  Receipt,
-  Client,
-  CompanyDetails,
-  PageSnapshots,
-} from '../types/receipt';
+import { Receipt, Client, CompanyDetails } from '../types/receipt';
 import { logger } from '../utils/logger';
 import { isErrorWithMessage, AuthUser } from '../types/common';
 interface UseReceiptDataProps {
   user: AuthUser | null;
   currentPage: number;
   itemsPerPage: number;
-  pageSnapshots: PageSnapshots;
   selectedMonth: string;
   activeSearchTerm: string;
 }
@@ -55,7 +47,6 @@ export const useReceiptData = ({
   user,
   currentPage,
   itemsPerPage,
-  pageSnapshots,
   selectedMonth,
   activeSearchTerm,
 }: UseReceiptDataProps): UseReceiptDataReturn => {
@@ -217,8 +208,7 @@ export const useReceiptData = ({
       // Online mode - fetch from Firebase
       const receiptsQuery = query(
         collection(db, 'receipts'),
-        where('userID', '==', user.uid),
-        orderBy('date', 'desc')
+        where('userID', '==', user.uid)
       );
 
       const querySnapshot = await getDocs(receiptsQuery);
@@ -439,8 +429,7 @@ export const useReceiptData = ({
           // Strategy 2: Get ALL receipts and filter them
           const allReceiptsQuery = query(
             receiptsCollection,
-            where('userID', '==', user.uid),
-            orderBy('date', 'desc')
+            where('userID', '==', user.uid)
           );
 
           // Add month filter if selected
@@ -462,8 +451,7 @@ export const useReceiptData = ({
               receiptsCollection,
               where('userID', '==', user.uid),
               where('date', '>=', startDate),
-              where('date', '<=', endDate),
-              orderBy('date', 'desc')
+              where('date', '<=', endDate)
             );
           }
 
@@ -525,7 +513,6 @@ export const useReceiptData = ({
           let fallbackQuery = query(
             receiptsCollection,
             where('userID', '==', user.uid),
-            orderBy('date', 'desc'),
             limit(itemsPerPage)
           );
 
@@ -547,7 +534,6 @@ export const useReceiptData = ({
               where('userID', '==', user.uid),
               where('date', '>=', startDate),
               where('date', '<=', endDate),
-              orderBy('date', 'desc'),
               limit(itemsPerPage)
             );
           }
@@ -566,37 +552,10 @@ export const useReceiptData = ({
           setTotalPages(1);
         }
       } else {
-        // Default: server-side pagination without search
-        const countQueryConstraints = [where('userID', '==', user.uid)];
-
-        if (selectedMonth) {
-          const [year, month] = selectedMonth.split('-');
-          const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-          const endDate = new Date(
-            parseInt(year),
-            parseInt(month),
-            0,
-            23,
-            59,
-            59,
-            999
-          );
-
-          countQueryConstraints.push(
-            where('date', '>=', startDate),
-            where('date', '<=', endDate)
-          );
-        }
-
-        const countQuery = query(receiptsCollection, ...countQueryConstraints);
-        const countSnapshot = await getCountFromServer(countQuery);
-        const totalCount = countSnapshot.data().count;
-        setTotalPages(Math.ceil(totalCount / itemsPerPage));
-
+        // Default: fetch all receipts and apply client-side pagination
         let receiptsQuery = query(
           receiptsCollection,
-          where('userID', '==', user.uid),
-          orderBy('date', 'desc')
+          where('userID', '==', user.uid)
         );
 
         if (selectedMonth) {
@@ -616,34 +575,31 @@ export const useReceiptData = ({
             receiptsCollection,
             where('userID', '==', user.uid),
             where('date', '>=', startDate),
-            where('date', '<=', endDate),
-            orderBy('date', 'desc')
+            where('date', '<=', endDate)
           );
-        }
-
-        receiptsQuery = query(receiptsQuery, limit(itemsPerPage));
-
-        const startAfterDoc = pageSnapshots[currentPage];
-        if (startAfterDoc) {
-          receiptsQuery = query(receiptsQuery, startAfter(startAfterDoc));
         }
 
         const querySnapshot = await getDocs(receiptsQuery);
 
-        const receiptsData = querySnapshot.docs.map(doc => ({
+        const allReceipts = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           date: doc.data().date.toDate(),
         })) as Receipt[];
 
         // Merge the receipts with existing cache to prevent duplicates
-        await offlineStorage.mergeReceipts(receiptsData);
+        await offlineStorage.mergeReceipts(allReceipts);
 
-        // Sort by receipt number descending on client side
-        sortReceiptsInPlace(receiptsData);
+        // Sort ALL receipts first by our custom logic
+        sortReceiptsInPlace(allReceipts);
 
-        setReceipts(receiptsData);
+        // Apply client-side pagination after sorting
+        setTotalPages(Math.ceil(allReceipts.length / itemsPerPage));
+        const start = (currentPage - 1) * itemsPerPage;
+        const paginated = allReceipts.slice(start, start + itemsPerPage);
+        setReceipts(paginated);
 
+        // Set lastVisible for potential future use (though not needed for client-side pagination)
         if (querySnapshot.docs.length > 0) {
           setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
         }
@@ -680,7 +636,6 @@ export const useReceiptData = ({
     user,
     currentPage,
     itemsPerPage,
-    pageSnapshots,
     selectedMonth,
     activeSearchTerm,
     isOffline,
