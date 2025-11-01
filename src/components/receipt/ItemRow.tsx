@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ReceiptItem, Product } from '../../types/receipt';
 
 interface ItemRowProps {
@@ -50,6 +50,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [buyPriceEdit, setBuyPriceEdit] = useState<string>('');
   const [quantityEdit, setQuantityEdit] = useState<string>('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Helper function to get buy price display value (similar to ProductModal)
   const getBuyPriceEditValue = (originalValue: number) => {
@@ -157,6 +158,26 @@ const ItemRow: React.FC<ItemRowProps> = ({
     }
   }, [item.buy_price]);
 
+  // Scroll selected item into view when navigating with arrow keys
+  useEffect(() => {
+    if (
+      selectedIndex >= 0 &&
+      dropdownRef.current &&
+      isProductDropdownOpen &&
+      filteredProducts.length > 0
+    ) {
+      const selectedElement = dropdownRef.current.querySelector(
+        `[data-product-index="${selectedIndex}"]`
+      ) as HTMLElement;
+      if (selectedElement) {
+        selectedElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        });
+      }
+    }
+  }, [selectedIndex, isProductDropdownOpen, filteredProducts.length]);
+
   return (
     <tr className={hasErrors ? 'bg-red-50' : ''}>
       <td className="px-4 py-4">
@@ -191,6 +212,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
 
           {isProductDropdownOpen && (
             <div
+              ref={dropdownRef}
               className={`absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg overflow-y-auto ${
                 dropdownDirection === 'up'
                   ? 'bottom-full mb-1 h-52'
@@ -201,6 +223,7 @@ const ItemRow: React.FC<ItemRowProps> = ({
                 filteredProducts.map((product, idx) => (
                   <div
                     key={product.id}
+                    data-product-index={idx}
                     onMouseDown={e => {
                       // Prevent blur event when clicking on dropdown item
                       e.preventDefault();
