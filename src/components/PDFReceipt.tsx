@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   disclaimer: {
-    marginTop: 14,
+    marginTop: 10,
     marginBottom: 14,
   },
   disclaimerText: {
@@ -374,6 +374,10 @@ const PDFReceiptDocument: React.FC<PDFReceiptProps> = ({
           powyższą otrzymuję. Sprzedający oświadcza, że nie jest podatnikiem
           vat. Sprzedający zgadza się na przetwarzanie danych osobowych przez{' '}
           {companyDetails.companyName || 'Demo'}.
+        </Text>
+        <Text style={styles.disclaimerText}>
+          Sprzedający został poinformowany o odjęciu 2% na zanieczyszczenia od
+          wagi w przypadku złomu stalowego.
         </Text>
       </View>
 
